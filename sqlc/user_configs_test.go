@@ -82,7 +82,7 @@ func TestDeleteUserConfig(t *testing.T) {
 func TestListUserConfigs(t *testing.T) {
 	userConfig1 := createRandomUserConfig(t, ConfigTypesAutoShoutoutActivation, "true", nil)
 	createRandomUserConfig(t, ConfigTypesAutoShoutoutDelay, "5", &userConfig1.UserID)
-	createRandomUserConfig(t, ConfigTypesBlacklist, "sunnyegg21,sunnyeggbot", &userConfig1.UserID)
+	createRandomUserConfig(t, ConfigTypesBlacklist, "sunnyegg,sunnyeggbot", &userConfig1.UserID)
 	createRandomUserConfig(t, ConfigTypesTimerCardDuration, "5", &userConfig1.UserID)
 	createRandomUserConfig(t, ConfigTypesTimerCardSoActivation, "false", &userConfig1.UserID)
 

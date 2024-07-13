@@ -1,4 +1,4 @@
-module github.com/sunnyegg21/go-so
+module github.com/sunnyegg/go-so
 
 go 1.22.5
 

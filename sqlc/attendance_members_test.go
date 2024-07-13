@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
-	"github.com/sunnyegg21/go-so/util"
+	"github.com/sunnyegg/go-so/util"
 )
 
 func createRandomAttendanceMember(t *testing.T, attendanceID *int64) AttendanceMember {
