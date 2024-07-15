@@ -37,10 +37,13 @@ jobs:
       id: go
 
     - name: Install golang-migrate
-      run: curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
+      run: |
+        curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
+        sudo mv migrate /usr/bin
+        which migrate
 
     - name: Install sqlc
-      run: make installsqlc
+      run: sudo snap install sqlc
 
     - name: Run migrations
       run: make migrateup
