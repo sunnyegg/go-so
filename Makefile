@@ -13,10 +13,13 @@ migrateup:
 migratedown:
 	migrate -path db/migration -database "postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable" -verbose down
 
+installsqlc:
+	go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.26.0
+
 sqlc:
 	sqlc generate
 	
 test:
 	go test -v -cover ./...
 
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc test
+.PHONY: postgres createdb dropdb migrateup migratedown sqlc test installsqlc
