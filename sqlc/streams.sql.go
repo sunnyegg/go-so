@@ -102,7 +102,7 @@ func (q *Queries) ListStreams(ctx context.Context, arg ListStreamsParams) ([]Str
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Stream
+	items := []Stream{}
 	for rows.Next() {
 		var i Stream
 		if err := rows.Scan(

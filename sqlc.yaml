@@ -6,10 +6,11 @@ sql:
     schema: "./db/migration"
     gen:
         go:
+            sql_package: "pgx/v5"
             package: "db"
             out: "sqlc"
             emit_json_tags: true
             emit_prepared_queries: false
             emit_interface: false
             emit_exact_table_names: false
-            sql_package: "pgx/v5"
+            emit_empty_slices: true

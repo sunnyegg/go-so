@@ -88,7 +88,7 @@ func (q *Queries) ListUserConfigs(ctx context.Context, arg ListUserConfigsParams
 		return nil, err
 	}
 	defer rows.Close()
-	var items []UserConfig
+	items := []UserConfig{}
 	for rows.Next() {
 		var i UserConfig
 		if err := rows.Scan(

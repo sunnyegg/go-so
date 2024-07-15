@@ -82,7 +82,7 @@ func (q *Queries) ListAttendances(ctx context.Context, arg ListAttendancesParams
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Attendance
+	items := []Attendance{}
 	for rows.Next() {
 		var i Attendance
 		if err := rows.Scan(
