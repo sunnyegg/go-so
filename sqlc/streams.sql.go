@@ -84,8 +84,62 @@ func (q *Queries) GetStream(ctx context.Context, id int64) (Stream, error) {
 	return i, err
 }
 
+const getStreamAttendanceMembers = `-- name: GetStreamAttendanceMembers :many
+SELECT s.title, s.game_name, s.started_at, am.username, am.is_shouted, am.present_at FROM attendance_members as am
+JOIN streams as s ON am.stream_id = s.id
+WHERE 1=1
+  AND stream_id = $3
+ORDER BY present_at ASC
+LIMIT $1
+OFFSET $2
+`
+
+type GetStreamAttendanceMembersParams struct {
+	Limit    int32 `json:"limit"`
+	Offset   int32 `json:"offset"`
+	StreamID int64 `json:"stream_id"`
+}
+
+type GetStreamAttendanceMembersRow struct {
+	Title     string             `json:"title"`
+	GameName  string             `json:"game_name"`
+	StartedAt pgtype.Timestamptz `json:"started_at"`
+	Username  string             `json:"username"`
+	IsShouted bool               `json:"is_shouted"`
+	PresentAt pgtype.Timestamptz `json:"present_at"`
+}
+
+func (q *Queries) GetStreamAttendanceMembers(ctx context.Context, arg GetStreamAttendanceMembersParams) ([]GetStreamAttendanceMembersRow, error) {
+	rows, err := q.db.Query(ctx, getStreamAttendanceMembers, arg.Limit, arg.Offset, arg.StreamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetStreamAttendanceMembersRow{}
+	for rows.Next() {
+		var i GetStreamAttendanceMembersRow
+		if err := rows.Scan(
+			&i.Title,
+			&i.GameName,
+			&i.StartedAt,
+			&i.Username,
+			&i.IsShouted,
+			&i.PresentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStreams = `-- name: ListStreams :many
 SELECT id, user_id, title, game_name, started_at, created_at, created_by FROM streams
+WHERE 1=1
+  AND user_id = $3
 ORDER BY id
 LIMIT $1
 OFFSET $2
@@ -94,10 +148,11 @@ OFFSET $2
 type ListStreamsParams struct {
 	Limit  int32 `json:"limit"`
 	Offset int32 `json:"offset"`
+	UserID int64 `json:"user_id"`
 }
 
 func (q *Queries) ListStreams(ctx context.Context, arg ListStreamsParams) ([]Stream, error) {
-	rows, err := q.db.Query(ctx, listStreams, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listStreams, arg.Limit, arg.Offset, arg.UserID)
 	if err != nil {
 		return nil, err
 	}

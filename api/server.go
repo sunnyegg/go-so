@@ -14,9 +14,23 @@ func NewServer(q *db.Queries) *Server {
 	server := &Server{queries: q}
 	router := gin.Default()
 
+	// users
 	router.POST("/users", server.createUser)
 	router.GET("/users/:id", server.getUser)
 	router.GET("/users", server.listUser)
+
+	// streams
+	router.POST("/streams", server.createStream)
+	router.GET("/streams/:id", server.getStream)
+	router.GET("/streams", server.listStream)
+	router.GET("/streams/attendance_members", server.getStreamAttendanceMember)
+
+	// attendance members
+	router.POST("/attendance_members", server.createAttendanceMember)
+
+	// user_configs
+	router.POST("/user_configs", server.createUserConfig)
+	router.GET("/user_configs", server.getUserConfig)
 
 	server.router = router
 	return server

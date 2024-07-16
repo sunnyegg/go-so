@@ -11,8 +11,13 @@ import (
 	"github.com/sunnyegg/go-so/util"
 )
 
-func createRandomStream(t *testing.T) Stream {
-	user := createRandomUser(t)
+func createRandomStream(t *testing.T, userID *int64) Stream {
+	var user User
+	if userID == nil {
+		user = createRandomUser(t)
+	} else {
+		user.ID = *userID
+	}
 
 	arg := CreateStreamParams{
 		UserID:   user.ID,
@@ -42,11 +47,11 @@ func createRandomStream(t *testing.T) Stream {
 }
 
 func TestCreateStream(t *testing.T) {
-	createRandomStream(t)
+	createRandomStream(t, nil)
 }
 
 func TestGetStream(t *testing.T) {
-	stream1 := createRandomStream(t)
+	stream1 := createRandomStream(t, nil)
 	stream2, err := testQueries.GetStream(context.Background(), stream1.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, stream2)
@@ -60,7 +65,7 @@ func TestGetStream(t *testing.T) {
 }
 
 func TestDeleteStream(t *testing.T) {
-	stream1 := createRandomStream(t)
+	stream1 := createRandomStream(t, nil)
 	err := testQueries.DeleteStream(context.Background(), stream1.ID)
 	require.NoError(t, err)
 
@@ -71,13 +76,15 @@ func TestDeleteStream(t *testing.T) {
 }
 
 func TestListStreams(t *testing.T) {
+	userID := int64(1)
 	for i := 0; i < 10; i++ {
-		createRandomStream(t)
+		createRandomStream(t, &userID)
 	}
 
 	arg := ListStreamsParams{
 		Limit:  5,
 		Offset: 5,
+		UserID: 1,
 	}
 
 	streams, err := testQueries.ListStreams(context.Background(), arg)
@@ -86,5 +93,25 @@ func TestListStreams(t *testing.T) {
 
 	for _, stream := range streams {
 		require.NotEmpty(t, stream)
+	}
+}
+
+func TestGetStreamAttendanceMembers(t *testing.T) {
+	stream1 := createRandomStream(t, nil)
+	createRandomAttendanceMember(t, &stream1.ID)
+	createRandomAttendanceMember(t, &stream1.ID)
+
+	arg := GetStreamAttendanceMembersParams{
+		Limit:    5,
+		Offset:   0,
+		StreamID: stream1.ID,
+	}
+
+	attendanceMembers, err := testQueries.GetStreamAttendanceMembers(context.Background(), arg)
+	require.NoError(t, err)
+	require.Len(t, attendanceMembers, 2)
+
+	for _, attendanceMember := range attendanceMembers {
+		require.NotEmpty(t, attendanceMember)
 	}
 }

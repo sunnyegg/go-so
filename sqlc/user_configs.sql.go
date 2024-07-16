@@ -52,61 +52,23 @@ func (q *Queries) DeleteUserConfig(ctx context.Context, id int64) error {
 }
 
 const getUserConfig = `-- name: GetUserConfig :one
-SELECT id, user_id, config_type, value, created_at, updated_at FROM user_configs
-WHERE id = $1 LIMIT 1
+SELECT "value" FROM user_configs
+WHERE 1=1
+  AND user_id = $1
+  AND config_type = $2
+LIMIT 1
 `
 
-func (q *Queries) GetUserConfig(ctx context.Context, id int64) (UserConfig, error) {
-	row := q.db.QueryRow(ctx, getUserConfig, id)
-	var i UserConfig
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.ConfigType,
-		&i.Value,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+type GetUserConfigParams struct {
+	UserID     int64       `json:"user_id"`
+	ConfigType ConfigTypes `json:"config_type"`
 }
 
-const listUserConfigs = `-- name: ListUserConfigs :many
-SELECT id, user_id, config_type, value, created_at, updated_at FROM user_configs
-ORDER BY id
-LIMIT $1
-OFFSET $2
-`
-
-type ListUserConfigsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) ListUserConfigs(ctx context.Context, arg ListUserConfigsParams) ([]UserConfig, error) {
-	rows, err := q.db.Query(ctx, listUserConfigs, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []UserConfig{}
-	for rows.Next() {
-		var i UserConfig
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.ConfigType,
-			&i.Value,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetUserConfig(ctx context.Context, arg GetUserConfigParams) (string, error) {
+	row := q.db.QueryRow(ctx, getUserConfig, arg.UserID, arg.ConfigType)
+	var value string
+	err := row.Scan(&value)
+	return value, err
 }
 
 const updateUserConfig = `-- name: UpdateUserConfig :one

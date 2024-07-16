@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -47,11 +46,9 @@ func TestGetUser(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, user2)
 
-	require.Equal(t, user1.UserID, user2.UserID)
 	require.Equal(t, user1.UserLogin, user2.UserLogin)
 	require.Equal(t, user1.UserName, user2.UserName)
 	require.Equal(t, user1.ProfileImageUrl, user2.ProfileImageUrl)
-	require.WithinDuration(t, user1.CreatedAt.Time, user2.CreatedAt.Time, time.Second)
 }
 
 func TestUpdateUser(t *testing.T) {

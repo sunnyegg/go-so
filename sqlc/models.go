@@ -56,21 +56,13 @@ func (ns NullConfigTypes) Value() (driver.Value, error) {
 	return string(ns.ConfigTypes), nil
 }
 
-type Attendance struct {
-	ID int64 `json:"id"`
-	// id punya user
-	UserID    int64              `json:"user_id"`
-	StreamID  int64              `json:"stream_id"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-}
-
 type AttendanceMember struct {
-	ID           int64              `json:"id"`
-	AttendanceID int64              `json:"attendance_id"`
-	Username     string             `json:"username"`
-	IsShouted    bool               `json:"is_shouted"`
-	PresentAt    pgtype.Timestamptz `json:"present_at"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID        int64              `json:"id"`
+	StreamID  int64              `json:"stream_id"`
+	Username  string             `json:"username"`
+	IsShouted bool               `json:"is_shouted"`
+	PresentAt pgtype.Timestamptz `json:"present_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Stream struct {

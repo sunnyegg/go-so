@@ -14,26 +14,26 @@ import (
 const createAttendanceMember = `-- name: CreateAttendanceMember :one
 INSERT INTO attendance_members
 (
-  attendance_id,
+  stream_id,
   username,
   is_shouted,
   present_at
 )
 VALUES
 ($1, $2, $3, $4)
-RETURNING id, attendance_id, username, is_shouted, present_at, created_at
+RETURNING id, stream_id, username, is_shouted, present_at, created_at
 `
 
 type CreateAttendanceMemberParams struct {
-	AttendanceID int64              `json:"attendance_id"`
-	Username     string             `json:"username"`
-	IsShouted    bool               `json:"is_shouted"`
-	PresentAt    pgtype.Timestamptz `json:"present_at"`
+	StreamID  int64              `json:"stream_id"`
+	Username  string             `json:"username"`
+	IsShouted bool               `json:"is_shouted"`
+	PresentAt pgtype.Timestamptz `json:"present_at"`
 }
 
 func (q *Queries) CreateAttendanceMember(ctx context.Context, arg CreateAttendanceMemberParams) (AttendanceMember, error) {
 	row := q.db.QueryRow(ctx, createAttendanceMember,
-		arg.AttendanceID,
+		arg.StreamID,
 		arg.Username,
 		arg.IsShouted,
 		arg.PresentAt,
@@ -41,69 +41,11 @@ func (q *Queries) CreateAttendanceMember(ctx context.Context, arg CreateAttendan
 	var i AttendanceMember
 	err := row.Scan(
 		&i.ID,
-		&i.AttendanceID,
+		&i.StreamID,
 		&i.Username,
 		&i.IsShouted,
 		&i.PresentAt,
 		&i.CreatedAt,
 	)
 	return i, err
-}
-
-const getAttendanceMember = `-- name: GetAttendanceMember :one
-SELECT id, attendance_id, username, is_shouted, present_at, created_at FROM attendance_members
-WHERE id = $1 LIMIT 1
-`
-
-func (q *Queries) GetAttendanceMember(ctx context.Context, id int64) (AttendanceMember, error) {
-	row := q.db.QueryRow(ctx, getAttendanceMember, id)
-	var i AttendanceMember
-	err := row.Scan(
-		&i.ID,
-		&i.AttendanceID,
-		&i.Username,
-		&i.IsShouted,
-		&i.PresentAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const listAttendanceMembers = `-- name: ListAttendanceMembers :many
-SELECT id, attendance_id, username, is_shouted, present_at, created_at FROM attendance_members
-ORDER BY id
-LIMIT $1
-OFFSET $2
-`
-
-type ListAttendanceMembersParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) ListAttendanceMembers(ctx context.Context, arg ListAttendanceMembersParams) ([]AttendanceMember, error) {
-	rows, err := q.db.Query(ctx, listAttendanceMembers, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []AttendanceMember{}
-	for rows.Next() {
-		var i AttendanceMember
-		if err := rows.Scan(
-			&i.ID,
-			&i.AttendanceID,
-			&i.Username,
-			&i.IsShouted,
-			&i.PresentAt,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

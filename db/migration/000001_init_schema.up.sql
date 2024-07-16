@@ -26,17 +26,10 @@ CREATE TABLE "streams" (
   "created_by" bigint NOT NULL
 );
 
-CREATE TABLE "attendances" (
-  "id" bigserial PRIMARY KEY,
-  "user_id" bigint NOT NULL,
-  "stream_id" bigint UNIQUE NOT NULL,
-  "created_at" timestamptz NOT NULL DEFAULT (now())
-);
-
 CREATE TABLE "attendance_members" (
   "id" bigserial PRIMARY KEY,
-  "attendance_id" bigint NOT NULL,
-  "username" varchar UNIQUE NOT NULL,
+  "stream_id" bigint NOT NULL,
+  "username" varchar NOT NULL,
   "is_shouted" bool NOT NULL DEFAULT false,
   "present_at" timestamptz NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now())
@@ -61,18 +54,14 @@ COMMENT ON COLUMN "users"."user_id" IS 'user_id punya twitch';
 
 COMMENT ON COLUMN "streams"."user_id" IS 'id punya user';
 
-COMMENT ON COLUMN "attendances"."user_id" IS 'id punya user';
-
 COMMENT ON COLUMN "user_configs"."user_id" IS 'id punya user';
 
 ALTER TABLE "streams" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 
 ALTER TABLE "streams" ADD FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 
-ALTER TABLE "attendances" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
-
-ALTER TABLE "attendances" ADD FOREIGN KEY ("stream_id") REFERENCES "streams" ("id");
-
-ALTER TABLE "attendance_members" ADD FOREIGN KEY ("attendance_id") REFERENCES "attendances" ("id");
+ALTER TABLE "attendance_members" ADD FOREIGN KEY ("stream_id") REFERENCES "streams" ("id");
 
 ALTER TABLE "user_configs" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
+
+CREATE UNIQUE INDEX ON "attendance_members" ("stream_id", "username");
