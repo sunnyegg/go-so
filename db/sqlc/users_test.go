@@ -10,12 +10,15 @@ import (
 )
 
 func createRandomUser(t *testing.T) User {
+	hashedToken, err := util.HashToken(util.RandomString(16))
+	require.NoError(t, err)
+
 	arg := CreateUserParams{
 		UserID:          util.RandomUserID(),
 		UserLogin:       util.RandomString(8),
 		UserName:        util.RandomString(8),
 		ProfileImageUrl: util.RandomString(16),
-		Token:           util.RandomString(16),
+		Token:           hashedToken,
 	}
 
 	user, err := testStore.CreateUser(context.Background(), arg)
