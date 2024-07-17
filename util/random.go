@@ -33,5 +33,5 @@ func RandomString(n int) string {
 
 // RandomUserID generates a random user_id
 func RandomUserID() string {
-	return strconv.Itoa(int(RandomInt(0, 1000)))
+	return strconv.Itoa(int(RandomInt(0, 1000000)))
 }

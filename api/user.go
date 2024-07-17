@@ -1,7 +1,9 @@
 package api
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -41,6 +43,14 @@ func (server *Server) loginUser(ctx *gin.Context) {
 
 			user, err := server.store.CreateUser(ctx, arg)
 			if err != nil {
+				// duplicate key error
+				// should not be happened
+				// because we already checked user_id in GetUserByUserID
+				if strings.Contains(err.Error(), "duplicate key") {
+					ctx.JSON(http.StatusForbidden, errorResponse(errors.New("unauthorized")))
+					return
+				}
+
 				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 				return
 			}
