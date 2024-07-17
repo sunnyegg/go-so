@@ -26,8 +26,8 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
-	// hash token
-	hashedToken, err := util.HashToken(req.Token)
+	// hash token will be used later in jwt
+	_, err := util.HashToken(req.Token)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -38,15 +38,15 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	// check user login
 	// if not exists, createUser
 	// else updateUser
-	user, err := server.store.GetUserByUserID(ctx, req.UserID)
+	_, err = server.store.GetUserByUserID(ctx, req.UserID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			// create user
 			arg := db.CreateUserParams{
-				UserLogin:       user.UserLogin,
-				UserName:        user.UserName,
-				ProfileImageUrl: user.ProfileImageUrl,
-				Token:           hashedToken,
+				UserID:          req.UserID,
+				UserLogin:       req.UserLogin,
+				UserName:        req.UserName,
+				ProfileImageUrl: req.ProfileImageUrl,
 			}
 
 			user, err := server.store.CreateUser(ctx, arg)
@@ -73,13 +73,13 @@ func (server *Server) loginUser(ctx *gin.Context) {
 
 	// update user
 	arg := db.UpdateUserParams{
+		UserID:          req.UserID,
 		UserLogin:       req.UserLogin,
 		UserName:        req.UserName,
 		ProfileImageUrl: req.ProfileImageUrl,
-		Token:           hashedToken,
 	}
 
-	user, err = server.store.UpdateUser(ctx, arg)
+	user, err := server.store.UpdateUser(ctx, arg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

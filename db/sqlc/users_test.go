@@ -10,15 +10,11 @@ import (
 )
 
 func createRandomUser(t *testing.T) User {
-	hashedToken, err := util.HashToken(util.RandomString(16))
-	require.NoError(t, err)
-
 	arg := CreateUserParams{
 		UserID:          util.RandomUserID(),
 		UserLogin:       util.RandomString(8),
 		UserName:        util.RandomString(8),
 		ProfileImageUrl: util.RandomString(16),
-		Token:           hashedToken,
 	}
 
 	user, err := testStore.CreateUser(context.Background(), arg)
@@ -29,7 +25,6 @@ func createRandomUser(t *testing.T) User {
 	require.Equal(t, arg.UserLogin, user.UserLogin)
 	require.Equal(t, arg.UserName, user.UserName)
 	require.Equal(t, arg.ProfileImageUrl, user.ProfileImageUrl)
-	require.Equal(t, arg.Token, user.Token)
 
 	require.NotZero(t, user.ID)
 	require.NotZero(t, user.CreatedAt)
@@ -59,7 +54,6 @@ func TestUpdateUser(t *testing.T) {
 		UserLogin:       user1.UserLogin,
 		UserName:        util.RandomString(8),
 		ProfileImageUrl: util.RandomString(16),
-		Token:           util.RandomString(16),
 	}
 	user2, err := testStore.UpdateUser(context.Background(), arg)
 	require.NoError(t, err)
@@ -69,7 +63,6 @@ func TestUpdateUser(t *testing.T) {
 	require.Equal(t, arg.UserLogin, user2.UserLogin)
 	require.Equal(t, arg.UserName, user2.UserName)
 	require.Equal(t, arg.ProfileImageUrl, user2.ProfileImageUrl)
-	require.Equal(t, arg.Token, user2.Token)
 	require.NotZero(t, user2.UpdatedAt)
 }
 

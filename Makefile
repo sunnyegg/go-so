@@ -10,8 +10,14 @@ dropdb:
 migrateup:
 	migrate -path db/migration -database "postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable" -verbose up
 
+migrateup1:
+	migrate -path db/migration -database "postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable" -verbose up 1
+
 migratedown:
 	migrate -path db/migration -database "postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable" -verbose down
+
+migratedown1:
+	migrate -path db/migration -database "postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable" -verbose down 1
 
 installsqlc:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.26.0
@@ -28,4 +34,4 @@ server:
 mockgen:
 	go run github.com/golang/mock/mockgen@v1.6.0 -destination db/mock/store.go -package mockdb github.com/sunnyegg/go-so/db/sqlc Store
 
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc test installsqlc server mockgen
+.PHONY: postgres createdb dropdb migrateup migratedown sqlc test installsqlc server mockgen migrateup1 migratedown1

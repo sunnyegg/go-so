@@ -15,12 +15,11 @@ INSERT INTO users
   user_id,
   user_login,
   user_name,
-  profile_image_url,
-  token
+  profile_image_url
 )
 VALUES
-($1, $2, $3, $4, $5)
-RETURNING id, user_id, user_login, user_name, profile_image_url, token, created_at, updated_at
+($1, $2, $3, $4)
+RETURNING id, user_id, user_login, user_name, profile_image_url, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -28,7 +27,6 @@ type CreateUserParams struct {
 	UserLogin       string `json:"user_login"`
 	UserName        string `json:"user_name"`
 	ProfileImageUrl string `json:"profile_image_url"`
-	Token           string `json:"token"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -37,7 +35,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.UserLogin,
 		arg.UserName,
 		arg.ProfileImageUrl,
-		arg.Token,
 	)
 	var i User
 	err := row.Scan(
@@ -46,7 +43,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UserLogin,
 		&i.UserName,
 		&i.ProfileImageUrl,
-		&i.Token,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -88,7 +84,7 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
 }
 
 const getUserByUserID = `-- name: GetUserByUserID :one
-SELECT id, user_id, user_login, user_name, profile_image_url, token, created_at, updated_at FROM users
+SELECT id, user_id, user_login, user_name, profile_image_url, created_at, updated_at FROM users
 WHERE user_id = $1 LIMIT 1
 `
 
@@ -101,7 +97,6 @@ func (q *Queries) GetUserByUserID(ctx context.Context, userID string) (User, err
 		&i.UserLogin,
 		&i.UserName,
 		&i.ProfileImageUrl,
-		&i.Token,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -109,7 +104,7 @@ func (q *Queries) GetUserByUserID(ctx context.Context, userID string) (User, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, user_id, user_login, user_name, profile_image_url, token, created_at, updated_at FROM users
+SELECT id, user_id, user_login, user_name, profile_image_url, created_at, updated_at FROM users
 ORDER BY id
 LIMIT $1
 OFFSET $2
@@ -135,7 +130,6 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.UserLogin,
 			&i.UserName,
 			&i.ProfileImageUrl,
-			&i.Token,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -151,9 +145,9 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
-SET user_login = $2, user_name = $3, profile_image_url = $4, token = $5, updated_at = now()
+SET user_login = $2, user_name = $3, profile_image_url = $4, updated_at = now()
 WHERE user_id = $1
-RETURNING id, user_id, user_login, user_name, profile_image_url, token, created_at, updated_at
+RETURNING id, user_id, user_login, user_name, profile_image_url, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -161,7 +155,6 @@ type UpdateUserParams struct {
 	UserLogin       string `json:"user_login"`
 	UserName        string `json:"user_name"`
 	ProfileImageUrl string `json:"profile_image_url"`
-	Token           string `json:"token"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
@@ -170,7 +163,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		arg.UserLogin,
 		arg.UserName,
 		arg.ProfileImageUrl,
-		arg.Token,
 	)
 	var i User
 	err := row.Scan(
@@ -179,7 +171,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.UserLogin,
 		&i.UserName,
 		&i.ProfileImageUrl,
-		&i.Token,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
