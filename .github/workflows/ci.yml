@@ -49,8 +49,7 @@ jobs:
       run: make migrateup
 
     - name: Create environment file
-      run: echo "DB_SOURCE=postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable" > app.env
-        echo "SERVER_ADDRESS=localhost:9000" >> app.env
+      run: echo $'DB_SOURCE=postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable\nSERVER_ADDRESS=localhost:9000' > app.env
 
     - name: Test
       run: make test
