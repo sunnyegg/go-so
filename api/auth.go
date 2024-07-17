@@ -8,10 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
-	"github.com/sunnyegg/go-so/util"
 )
 
-type createUserRequest struct {
+type loginUserRequest struct {
 	UserID          string `json:"user_id" binding:"required"`
 	UserLogin       string `json:"user_login" binding:"required"`
 	UserName        string `json:"user_name" binding:"required"`
@@ -19,26 +18,28 @@ type createUserRequest struct {
 	Token           string `json:"token"`
 }
 
+type userResponse struct {
+	UserLogin       string `json:"user_login"`
+	UserName        string `json:"user_name"`
+	ProfileImageUrl string `json:"profile_image_url"`
+}
+
+type loginUserResponse struct {
+	AccessToken string       `json:"access_token"`
+	User        userResponse `json:"user"`
+}
+
 func (server *Server) loginUser(ctx *gin.Context) {
-	var req createUserRequest
+	var req loginUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
-	// hash token will be used later in jwt
-	_, err := util.HashToken(req.Token)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	// TODO: create jwt token
-
 	// check user login
 	// if not exists, createUser
 	// else updateUser
-	_, err = server.store.GetUserByUserID(ctx, req.UserID)
+	_, err := server.store.GetUserByUserID(ctx, req.UserID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			// create user
@@ -63,7 +64,13 @@ func (server *Server) loginUser(ctx *gin.Context) {
 				return
 			}
 
-			ctx.JSON(http.StatusOK, user)
+			rsp, err := createLoginUserResponse(user, server)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+				return
+			}
+
+			ctx.JSON(http.StatusOK, rsp)
 			return
 		}
 
@@ -85,5 +92,28 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, user)
+	rsp, err := createLoginUserResponse(user, server)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, rsp)
+}
+
+func createLoginUserResponse(user db.User, server *Server) (loginUserResponse, error) {
+	// create token
+	accessToken, err := server.tokenMaker.MakeToken(user.UserID, server.config.AccessTokenDuration)
+	if err != nil {
+		return loginUserResponse{}, err
+	}
+
+	return loginUserResponse{
+		AccessToken: accessToken,
+		User: userResponse{
+			UserLogin:       user.UserLogin,
+			UserName:        user.UserName,
+			ProfileImageUrl: user.ProfileImageUrl,
+		},
+	}, nil
 }

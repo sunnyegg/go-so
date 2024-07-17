@@ -85,7 +85,7 @@ func TestGetUserAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			url := "/users/" + tc.userID
@@ -98,8 +98,8 @@ func TestGetUserAPI(t *testing.T) {
 	}
 }
 
-func randomUser() createUserRequest {
-	return createUserRequest{
+func randomUser() loginUserRequest {
+	return loginUserRequest{
 		UserID:          util.ParseIntToString(int(util.RandomInt(1, 1000))),
 		UserLogin:       util.RandomString(10),
 		UserName:        util.RandomString(10),
@@ -107,7 +107,7 @@ func randomUser() createUserRequest {
 	}
 }
 
-func requireBodyUser(t *testing.T, body *bytes.Buffer, user createUserRequest) {
+func requireBodyUser(t *testing.T, body *bytes.Buffer, user loginUserRequest) {
 	data, err := io.ReadAll(body)
 	require.NoError(t, err)
 
