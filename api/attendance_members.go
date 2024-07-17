@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	db "github.com/sunnyegg/go-so/sqlc"
+	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/util"
 )
 
@@ -30,7 +30,7 @@ func (server *Server) createAttendanceMember(ctx *gin.Context) {
 		PresentAt: util.StringToTimestamp(req.PresentAt),
 	}
 
-	attendanceMember, err := server.queries.CreateAttendanceMember(ctx, arg)
+	attendanceMember, err := server.store.CreateAttendanceMember(ctx, arg)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key") {
 			ctx.JSON(http.StatusBadRequest, errorResponse(errors.New("member exists")))

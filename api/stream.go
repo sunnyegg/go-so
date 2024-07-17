@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	db "github.com/sunnyegg/go-so/sqlc"
+	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/util"
 )
 
@@ -31,7 +31,7 @@ func (server *Server) createStream(ctx *gin.Context) {
 		CreatedBy: req.UserID, // TODO: get from token
 	}
 
-	stream, err := server.queries.CreateStream(ctx, arg)
+	stream, err := server.store.CreateStream(ctx, arg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -51,7 +51,7 @@ func (server *Server) getStream(ctx *gin.Context) {
 		return
 	}
 
-	stream, err := server.queries.GetStream(ctx, req.ID)
+	stream, err := server.store.GetStream(ctx, req.ID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			ctx.JSON(http.StatusNotFound, errorResponse(err))
@@ -85,7 +85,7 @@ func (server *Server) listStream(ctx *gin.Context) {
 		UserID: req.UserID,
 	}
 
-	streams, err := server.queries.ListStreams(ctx, arg)
+	streams, err := server.store.ListStreams(ctx, arg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -114,7 +114,7 @@ func (server *Server) getStreamAttendanceMember(ctx *gin.Context) {
 		StreamID: req.StreamID,
 	}
 
-	attendanceMembers, err := server.queries.GetStreamAttendanceMembers(ctx, arg)
+	attendanceMembers, err := server.store.GetStreamAttendanceMembers(ctx, arg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

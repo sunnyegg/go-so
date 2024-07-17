@@ -22,7 +22,7 @@ func createRandomUserConfig(t *testing.T, configType ConfigTypes, value string, 
 		Value:      value,
 	}
 
-	userConfig, err := testQueries.CreateUserConfig(context.Background(), arg)
+	userConfig, err := testStore.CreateUserConfig(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, userConfig)
 
@@ -38,7 +38,7 @@ func TestCreateUserConfig(t *testing.T) {
 
 func TestGetUserConfig(t *testing.T) {
 	userConfig1 := createRandomUserConfig(t, ConfigTypesAutoShoutoutActivation, "true", nil)
-	userConfig2, err := testQueries.GetUserConfig(context.Background(), GetUserConfigParams{
+	userConfig2, err := testStore.GetUserConfig(context.Background(), GetUserConfigParams{
 		UserID:     userConfig1.UserID,
 		ConfigType: ConfigTypesAutoShoutoutActivation,
 	})
@@ -54,7 +54,7 @@ func TestUpdateUserConfig(t *testing.T) {
 		ID:    userConfig1.ID,
 		Value: "false",
 	}
-	userConfig2, err := testQueries.UpdateUserConfig(context.Background(), arg)
+	userConfig2, err := testStore.UpdateUserConfig(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, userConfig2)
 
@@ -65,10 +65,10 @@ func TestUpdateUserConfig(t *testing.T) {
 
 func TestDeleteUserConfig(t *testing.T) {
 	userConfig1 := createRandomUserConfig(t, ConfigTypesAutoShoutoutActivation, "true", nil)
-	err := testQueries.DeleteUserConfig(context.Background(), userConfig1.ID)
+	err := testStore.DeleteUserConfig(context.Background(), userConfig1.ID)
 	require.NoError(t, err)
 
-	userConfig2, err := testQueries.GetUserConfig(context.Background(), GetUserConfigParams{
+	userConfig2, err := testStore.GetUserConfig(context.Background(), GetUserConfigParams{
 		UserID:     userConfig1.UserID,
 		ConfigType: ConfigTypesAutoShoutoutActivation,
 	})

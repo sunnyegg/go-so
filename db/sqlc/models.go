@@ -82,7 +82,8 @@ type User struct {
 	UserID          string             `json:"user_id"`
 	UserLogin       string             `json:"user_login"`
 	UserName        string             `json:"user_name"`
-	ProfileImageUrl pgtype.Text        `json:"profile_image_url"`
+	ProfileImageUrl string             `json:"profile_image_url"`
+	Token           string             `json:"token"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }

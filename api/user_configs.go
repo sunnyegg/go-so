@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	db "github.com/sunnyegg/go-so/sqlc"
+	db "github.com/sunnyegg/go-so/db/sqlc"
 )
 
 type createUserConfigRequest struct {
@@ -23,7 +23,7 @@ func (server *Server) createUserConfig(ctx *gin.Context) {
 		return
 	}
 
-	userConfig, err := server.queries.CreateUserConfig(ctx, db.CreateUserConfigParams{
+	userConfig, err := server.store.CreateUserConfig(ctx, db.CreateUserConfigParams{
 		UserID:     req.UserID,
 		ConfigType: req.ConfigType,
 		Value:      req.Value,
@@ -52,7 +52,7 @@ func (server *Server) getUserConfig(ctx *gin.Context) {
 		return
 	}
 
-	userConfig, err := server.queries.GetUserConfig(ctx, db.GetUserConfigParams{
+	userConfig, err := server.store.GetUserConfig(ctx, db.GetUserConfigParams{
 		UserID:     req.UserID,
 		ConfigType: req.ConfigType,
 	})

@@ -28,7 +28,7 @@ func createRandomAttendanceMember(t *testing.T, streamID *int64) AttendanceMembe
 		},
 	}
 
-	attendanceMember, err := testQueries.CreateAttendanceMember(context.Background(), arg)
+	attendanceMember, err := testStore.CreateAttendanceMember(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, attendanceMember)
 

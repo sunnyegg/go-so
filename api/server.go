@@ -2,20 +2,22 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	db "github.com/sunnyegg/go-so/sqlc"
+	db "github.com/sunnyegg/go-so/db/sqlc"
 )
 
 type Server struct {
-	queries *db.Queries
-	router  *gin.Engine
+	store  db.Store
+	router *gin.Engine
 }
 
-func NewServer(q *db.Queries) *Server {
-	server := &Server{queries: q}
+func NewServer(store db.Store) *Server {
+	server := &Server{store: store}
 	router := gin.Default()
 
+	// auth
+	router.POST("/login", server.loginUser)
+
 	// users
-	router.POST("/users", server.createUser)
 	router.GET("/users/:id", server.getUser)
 	router.GET("/users", server.listUser)
 

@@ -5,23 +5,20 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"github.com/sunnyegg/go-so/util"
 )
 
 func createRandomUser(t *testing.T) User {
 	arg := CreateUserParams{
-		UserID:    util.RandomUserID(),
-		UserLogin: util.RandomString(8),
-		UserName:  util.RandomString(8),
-		ProfileImageUrl: pgtype.Text{
-			String: util.RandomString(16),
-			Valid:  true,
-		},
+		UserID:          util.RandomUserID(),
+		UserLogin:       util.RandomString(8),
+		UserName:        util.RandomString(8),
+		ProfileImageUrl: util.RandomString(16),
+		Token:           util.RandomString(16),
 	}
 
-	user, err := testQueries.CreateUser(context.Background(), arg)
+	user, err := testStore.CreateUser(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, user)
 
@@ -29,6 +26,7 @@ func createRandomUser(t *testing.T) User {
 	require.Equal(t, arg.UserLogin, user.UserLogin)
 	require.Equal(t, arg.UserName, user.UserName)
 	require.Equal(t, arg.ProfileImageUrl, user.ProfileImageUrl)
+	require.Equal(t, arg.Token, user.Token)
 
 	require.NotZero(t, user.ID)
 	require.NotZero(t, user.CreatedAt)
@@ -42,7 +40,7 @@ func TestCreateUser(t *testing.T) {
 
 func TestGetUser(t *testing.T) {
 	user1 := createRandomUser(t)
-	user2, err := testQueries.GetUser(context.Background(), user1.ID)
+	user2, err := testStore.GetUser(context.Background(), user1.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, user2)
 
@@ -54,31 +52,30 @@ func TestGetUser(t *testing.T) {
 func TestUpdateUser(t *testing.T) {
 	user1 := createRandomUser(t)
 	arg := UpdateUserParams{
-		ID:        user1.ID,
-		UserLogin: util.RandomString(8),
-		UserName:  util.RandomString(8),
-		ProfileImageUrl: pgtype.Text{
-			String: util.RandomString(16),
-			Valid:  true,
-		},
+		UserID:          user1.UserID,
+		UserLogin:       user1.UserLogin,
+		UserName:        util.RandomString(8),
+		ProfileImageUrl: util.RandomString(16),
+		Token:           util.RandomString(16),
 	}
-	user2, err := testQueries.UpdateUser(context.Background(), arg)
+	user2, err := testStore.UpdateUser(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, user2)
 
-	require.Equal(t, arg.ID, user2.ID)
+	require.Equal(t, arg.UserID, user2.UserID)
 	require.Equal(t, arg.UserLogin, user2.UserLogin)
 	require.Equal(t, arg.UserName, user2.UserName)
 	require.Equal(t, arg.ProfileImageUrl, user2.ProfileImageUrl)
+	require.Equal(t, arg.Token, user2.Token)
 	require.NotZero(t, user2.UpdatedAt)
 }
 
 func TestDeleteUser(t *testing.T) {
 	user1 := createRandomUser(t)
-	err := testQueries.DeleteUser(context.Background(), user1.ID)
+	err := testStore.DeleteUser(context.Background(), user1.ID)
 	require.NoError(t, err)
 
-	user2, err := testQueries.GetUser(context.Background(), user1.ID)
+	user2, err := testStore.GetUser(context.Background(), user1.ID)
 	require.Error(t, err)
 	require.Equal(t, err, pgx.ErrNoRows)
 	require.Empty(t, user2)
@@ -94,7 +91,7 @@ func TestListUsers(t *testing.T) {
 		Offset: 5,
 	}
 
-	users, err := testQueries.ListUsers(context.Background(), arg)
+	users, err := testStore.ListUsers(context.Background(), arg)
 	require.NoError(t, err)
 	require.Len(t, users, 5)
 

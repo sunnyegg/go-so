@@ -8,10 +8,11 @@ CREATE TYPE "config_types" AS ENUM (
 
 CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
-  "user_id" varchar NOT NULL,
+  "user_id" varchar UNIQUE NOT NULL,
   "user_login" varchar NOT NULL,
   "user_name" varchar NOT NULL,
-  "profile_image_url" varchar,
+  "profile_image_url" varchar NOT NULL DEFAULT '',
+  "token" varchar NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "updated_at" timestamptz
 );
@@ -43,8 +44,6 @@ CREATE TABLE "user_configs" (
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "updated_at" timestamptz
 );
-
-CREATE INDEX ON "users" ("user_login");
 
 CREATE INDEX ON "streams" ("title");
 

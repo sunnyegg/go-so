@@ -5,8 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/sunnyegg/go-so/sqlc"
+	db "github.com/sunnyegg/go-so/db/sqlc"
 )
 
 type createUserRequest struct {
@@ -14,28 +13,55 @@ type createUserRequest struct {
 	UserLogin       string `json:"user_login" binding:"required"`
 	UserName        string `json:"user_name" binding:"required"`
 	ProfileImageUrl string `json:"profile_image_url"`
+	Token           string `json:"token"`
 }
 
-func (server *Server) createUser(ctx *gin.Context) {
+func (server *Server) loginUser(ctx *gin.Context) {
 	var req createUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
-	arg := db.CreateUserParams{
-		UserID:    req.UserID,
-		UserLogin: req.UserLogin,
-		UserName:  req.UserName,
-	}
-	if req.ProfileImageUrl != "" {
-		arg.ProfileImageUrl = pgtype.Text{
-			String: req.ProfileImageUrl,
-			Valid:  true,
+	// TODO: hash token
+
+	// check user login
+	// if not exists, createUser
+	// else updateUser
+	user, err := server.store.GetUserByUserID(ctx, req.UserID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			// create user
+			arg := db.CreateUserParams{
+				UserLogin:       user.UserLogin,
+				UserName:        user.UserName,
+				ProfileImageUrl: user.ProfileImageUrl,
+				Token:           user.Token,
+			}
+
+			user, err := server.store.CreateUser(ctx, arg)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+				return
+			}
+
+			ctx.JSON(http.StatusOK, user)
+			return
 		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
 	}
 
-	user, err := server.queries.CreateUser(ctx, arg)
+	// update user
+	arg := db.UpdateUserParams{
+		UserLogin:       req.UserLogin,
+		UserName:        req.UserName,
+		ProfileImageUrl: req.ProfileImageUrl,
+		Token:           req.Token,
+	}
+
+	user, err = server.store.UpdateUser(ctx, arg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -55,7 +81,7 @@ func (server *Server) getUser(ctx *gin.Context) {
 		return
 	}
 
-	user, err := server.queries.GetUser(ctx, req.ID)
+	user, err := server.store.GetUser(ctx, req.ID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			ctx.JSON(http.StatusNotFound, errorResponse(err))
@@ -86,7 +112,7 @@ func (server *Server) listUser(ctx *gin.Context) {
 		Offset: (req.PageID - 1) * req.PageSize,
 	}
 
-	users, err := server.queries.ListUsers(ctx, arg)
+	users, err := server.store.ListUsers(ctx, arg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

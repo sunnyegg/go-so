@@ -30,7 +30,7 @@ func createRandomStream(t *testing.T, userID *int64) Stream {
 		CreatedBy: user.ID,
 	}
 
-	stream, err := testQueries.CreateStream(context.Background(), arg)
+	stream, err := testStore.CreateStream(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, stream)
 
@@ -52,7 +52,7 @@ func TestCreateStream(t *testing.T) {
 
 func TestGetStream(t *testing.T) {
 	stream1 := createRandomStream(t, nil)
-	stream2, err := testQueries.GetStream(context.Background(), stream1.ID)
+	stream2, err := testStore.GetStream(context.Background(), stream1.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, stream2)
 
@@ -66,28 +66,28 @@ func TestGetStream(t *testing.T) {
 
 func TestDeleteStream(t *testing.T) {
 	stream1 := createRandomStream(t, nil)
-	err := testQueries.DeleteStream(context.Background(), stream1.ID)
+	err := testStore.DeleteStream(context.Background(), stream1.ID)
 	require.NoError(t, err)
 
-	stream2, err := testQueries.GetStream(context.Background(), stream1.ID)
+	stream2, err := testStore.GetStream(context.Background(), stream1.ID)
 	require.Error(t, err)
 	require.Equal(t, err, pgx.ErrNoRows)
 	require.Empty(t, stream2)
 }
 
 func TestListStreams(t *testing.T) {
-	userID := int64(1)
+	user := createRandomUser(t)
 	for i := 0; i < 10; i++ {
-		createRandomStream(t, &userID)
+		createRandomStream(t, &user.ID)
 	}
 
 	arg := ListStreamsParams{
 		Limit:  5,
 		Offset: 5,
-		UserID: 1,
+		UserID: user.ID,
 	}
 
-	streams, err := testQueries.ListStreams(context.Background(), arg)
+	streams, err := testStore.ListStreams(context.Background(), arg)
 	require.NoError(t, err)
 	require.Len(t, streams, 5)
 
@@ -107,7 +107,7 @@ func TestGetStreamAttendanceMembers(t *testing.T) {
 		StreamID: stream1.ID,
 	}
 
-	attendanceMembers, err := testQueries.GetStreamAttendanceMembers(context.Background(), arg)
+	attendanceMembers, err := testStore.GetStreamAttendanceMembers(context.Background(), arg)
 	require.NoError(t, err)
 	require.Len(t, attendanceMembers, 2)
 
