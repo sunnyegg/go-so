@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -25,6 +26,14 @@ func StringToTimestamp(s string) pgtype.Timestamptz {
 	}
 	return pgtype.Timestamptz{
 		Time:  t,
+		Valid: true,
+	}
+}
+
+// convert uuid to pgtype.UUID
+func UUIDToUUID(s uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{
+		Bytes: s,
 		Valid: true,
 	}
 }

@@ -10,12 +10,14 @@ import (
 
 type Querier interface {
 	CreateAttendanceMember(ctx context.Context, arg CreateAttendanceMemberParams) (AttendanceMember, error)
+	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateStream(ctx context.Context, arg CreateStreamParams) (Stream, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserConfig(ctx context.Context, arg CreateUserConfigParams) (UserConfig, error)
 	DeleteStream(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteUserConfig(ctx context.Context, id int64) error
+	GetSession(ctx context.Context, arg GetSessionParams) (Session, error)
 	GetStream(ctx context.Context, arg GetStreamParams) (GetStreamRow, error)
 	GetStreamAttendanceMembers(ctx context.Context, arg GetStreamAttendanceMembersParams) ([]GetStreamAttendanceMembersRow, error)
 	GetUser(ctx context.Context, id int64) (GetUserRow, error)

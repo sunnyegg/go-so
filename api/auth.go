@@ -4,10 +4,13 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
+	"github.com/sunnyegg/go-so/util"
 )
 
 type loginUserRequest struct {
@@ -15,7 +18,7 @@ type loginUserRequest struct {
 	UserLogin       string `json:"user_login" binding:"required"`
 	UserName        string `json:"user_name" binding:"required"`
 	ProfileImageUrl string `json:"profile_image_url"`
-	Token           string `json:"token"`
+	Token           string `json:"token" binding:"required"`
 }
 
 type userResponse struct {
@@ -25,8 +28,10 @@ type userResponse struct {
 }
 
 type loginUserResponse struct {
-	AccessToken string       `json:"access_token"`
-	User        userResponse `json:"user"`
+	SessionID    uuid.UUID    `json:"session_id"`
+	AccessToken  string       `json:"access_token"`
+	RefreshToken string       `json:"refresh_token"`
+	User         userResponse `json:"user"`
 }
 
 func (server *Server) loginUser(ctx *gin.Context) {
@@ -64,7 +69,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 				return
 			}
 
-			rsp, err := createLoginUserResponse(user, server)
+			rsp, err := createLoginUserResponse(ctx, user, server)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 				return
@@ -92,7 +97,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
-	rsp, err := createLoginUserResponse(user, server)
+	rsp, err := createLoginUserResponse(ctx, user, server)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -101,19 +106,105 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, rsp)
 }
 
-func createLoginUserResponse(user db.User, server *Server) (loginUserResponse, error) {
+func createLoginUserResponse(ctx *gin.Context, user db.User, server *Server) (loginUserResponse, error) {
 	// create token
-	accessToken, err := server.tokenMaker.MakeToken(user.ID, server.config.AccessTokenDuration)
+	accessToken, _, err := server.tokenMaker.MakeToken(user.ID, server.config.AccessTokenDuration)
+	if err != nil {
+		return loginUserResponse{}, err
+	}
+
+	// refresh token
+	refreshToken, payload, err := server.tokenMaker.MakeToken(user.ID, server.config.RefreshTokenDuration*7)
+	if err != nil {
+		return loginUserResponse{}, err
+	}
+
+	// create session
+	_, err = server.store.CreateSession(ctx, db.CreateSessionParams{
+		ID:           util.UUIDToUUID(payload.ID),
+		UserID:       user.ID,
+		RefreshToken: refreshToken,
+		UserAgent:    ctx.Request.UserAgent(),
+		ClientIp:     ctx.ClientIP(),
+		IsBlocked:    false,
+		ExpiresAt:    util.StringToTimestamp(payload.ExpiredAt.Format(time.RFC3339)),
+	})
 	if err != nil {
 		return loginUserResponse{}, err
 	}
 
 	return loginUserResponse{
-		AccessToken: accessToken,
+		SessionID:    payload.ID,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 		User: userResponse{
 			UserLogin:       user.UserLogin,
 			UserName:        user.UserName,
 			ProfileImageUrl: user.ProfileImageUrl,
 		},
 	}, nil
+}
+
+type refreshUserRequest struct {
+	SessionID    uuid.UUID `json:"session_id" binding:"required"`
+	RefreshToken string    `json:"refresh_token" binding:"required"`
+}
+
+func (server *Server) refreshUser(ctx *gin.Context) {
+	var req refreshUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		err = errors.New("invalid request")
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	// check refresh token
+	payload, err := server.tokenMaker.VerifyToken(req.RefreshToken)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+	if payload.ID != req.SessionID {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid session")))
+		return
+	}
+	if payload.ExpiredAt.Before(time.Now()) {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("expired")))
+		return
+	}
+
+	// check session
+	session, err := server.store.GetSession(ctx, db.GetSessionParams{
+		ID:     util.UUIDToUUID(payload.ID),
+		UserID: payload.UserID,
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid session")))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	if payload.UserID != session.UserID {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid user")))
+		return
+	}
+	if session.RefreshToken != req.RefreshToken {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid refresh token")))
+		return
+	}
+	if session.IsBlocked {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("blocked")))
+		return
+	}
+
+	accessToken, _, err := server.tokenMaker.MakeToken(payload.UserID, server.config.AccessTokenDuration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, accessToken)
 }

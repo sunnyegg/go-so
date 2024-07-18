@@ -9,7 +9,7 @@ import (
 )
 
 type Maker interface {
-	MakeToken(userID int64, duration time.Duration) (string, error)
+	MakeToken(userID int64, duration time.Duration) (string, *Payload, error)
 
 	VerifyToken(token string) (*Payload, error)
 }
@@ -32,13 +32,14 @@ func NewPasetoMaker(symmetricKey string) (Maker, error) {
 	return maker, nil
 }
 
-func (maker *PasetoMaker) MakeToken(userID int64, duration time.Duration) (string, error) {
+func (maker *PasetoMaker) MakeToken(userID int64, duration time.Duration) (string, *Payload, error) {
 	payload, err := NewPayload(userID, duration)
 	if err != nil {
-		return "", err
+		return "", payload, err
 	}
 
-	return maker.paseto.Encrypt(maker.symmetricKey, payload, nil)
+	token, err := maker.paseto.Encrypt(maker.symmetricKey, payload, nil)
+	return token, payload, err
 }
 
 func (maker *PasetoMaker) VerifyToken(token string) (*Payload, error) {

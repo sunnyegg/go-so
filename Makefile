@@ -34,4 +34,7 @@ server:
 mockgen:
 	go run github.com/golang/mock/mockgen@v1.6.0 -destination db/mock/store.go -package mockdb github.com/sunnyegg/go-so/db/sqlc Store
 
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc test installsqlc server mockgen migrateup1 migratedown1
+createmigration:
+	migrate create -ext sql -dir db/migration -seq $(seq)
+
+.PHONY: postgres createdb dropdb migrateup migratedown sqlc test installsqlc server mockgen migrateup1 migratedown1 createmigration
