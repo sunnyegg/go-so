@@ -103,7 +103,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 
 func createLoginUserResponse(user db.User, server *Server) (loginUserResponse, error) {
 	// create token
-	accessToken, err := server.tokenMaker.MakeToken(user.UserID, server.config.AccessTokenDuration)
+	accessToken, err := server.tokenMaker.MakeToken(user.ID, server.config.AccessTokenDuration)
 	if err != nil {
 		return loginUserResponse{}, err
 	}

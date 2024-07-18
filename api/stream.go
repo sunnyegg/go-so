@@ -6,11 +6,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
+	"github.com/sunnyegg/go-so/token"
 	"github.com/sunnyegg/go-so/util"
 )
 
 type createStreamRequest struct {
-	UserID    int64  `json:"user_id" binding:"required"`
+	Title     string `json:"title" binding:"required"`
+	GameName  string `json:"game_name" binding:"required"`
+	StartedAt string `json:"started_at" binding:"required"`
+}
+
+type createStreamResponse struct {
 	Title     string `json:"title" binding:"required"`
 	GameName  string `json:"game_name" binding:"required"`
 	StartedAt string `json:"started_at" binding:"required"`
@@ -23,12 +29,14 @@ func (server *Server) createStream(ctx *gin.Context) {
 		return
 	}
 
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
 	arg := db.CreateStreamParams{
-		UserID:    req.UserID,
+		UserID:    authPayload.UserID,
 		Title:     req.Title,
 		GameName:  req.GameName,
 		StartedAt: util.StringToTimestamp(req.StartedAt),
-		CreatedBy: req.UserID, // TODO: get from token
+		CreatedBy: authPayload.UserID,
 	}
 
 	stream, err := server.store.CreateStream(ctx, arg)
@@ -37,7 +45,11 @@ func (server *Server) createStream(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, stream)
+	ctx.JSON(http.StatusOK, createStreamResponse{
+		Title:     stream.Title,
+		GameName:  stream.GameName,
+		StartedAt: stream.StartedAt.Time.String(),
+	})
 }
 
 type getStreamRequest struct {
@@ -51,7 +63,13 @@ func (server *Server) getStream(ctx *gin.Context) {
 		return
 	}
 
-	stream, err := server.store.GetStream(ctx, req.ID)
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	arg := db.GetStreamParams{
+		ID:     req.ID,
+		UserID: authPayload.UserID,
+	}
+
+	stream, err := server.store.GetStream(ctx, arg)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			ctx.JSON(http.StatusNotFound, errorResponse(err))
@@ -71,7 +89,6 @@ type listStreamRequest struct {
 	UserID   int64 `form:"user_id" binding:"required,min=1"`
 }
 
-// TODO: filter by user_id in token
 func (server *Server) listStream(ctx *gin.Context) {
 	var req listStreamRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
@@ -79,10 +96,12 @@ func (server *Server) listStream(ctx *gin.Context) {
 		return
 	}
 
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
 	arg := db.ListStreamsParams{
 		Limit:  req.PageSize,
 		Offset: (req.PageID - 1) * req.PageSize,
-		UserID: req.UserID,
+		UserID: authPayload.UserID,
 	}
 
 	streams, err := server.store.ListStreams(ctx, arg)
@@ -100,7 +119,6 @@ type getStreamAttendanceMembersRequest struct {
 	StreamID int64 `form:"stream_id" binding:"required,min=1"`
 }
 
-// TODO: filter by user_id in token
 func (server *Server) getStreamAttendanceMember(ctx *gin.Context) {
 	var req getStreamAttendanceMembersRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
@@ -108,10 +126,13 @@ func (server *Server) getStreamAttendanceMember(ctx *gin.Context) {
 		return
 	}
 
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
 	arg := db.GetStreamAttendanceMembersParams{
 		Limit:    req.PageSize,
 		Offset:   (req.PageID - 1) * req.PageSize,
 		StreamID: req.StreamID,
+		UserID:   authPayload.UserID,
 	}
 
 	attendanceMembers, err := server.store.GetStreamAttendanceMembers(ctx, arg)

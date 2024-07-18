@@ -138,10 +138,10 @@ func (mr *MockStoreMockRecorder) DeleteUserConfig(arg0, arg1 interface{}) *gomoc
 }
 
 // GetStream mocks base method.
-func (m *MockStore) GetStream(arg0 context.Context, arg1 int64) (db.Stream, error) {
+func (m *MockStore) GetStream(arg0 context.Context, arg1 db.GetStreamParams) (db.GetStreamRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetStream", arg0, arg1)
-	ret0, _ := ret[0].(db.Stream)
+	ret0, _ := ret[0].(db.GetStreamRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -198,10 +198,10 @@ func (mr *MockStoreMockRecorder) GetUserByUserID(arg0, arg1 interface{}) *gomock
 }
 
 // GetUserConfig mocks base method.
-func (m *MockStore) GetUserConfig(arg0 context.Context, arg1 db.GetUserConfigParams) (string, error) {
+func (m *MockStore) GetUserConfig(arg0 context.Context, arg1 db.GetUserConfigParams) (db.UserConfig, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserConfig", arg0, arg1)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(db.UserConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -213,10 +213,10 @@ func (mr *MockStoreMockRecorder) GetUserConfig(arg0, arg1 interface{}) *gomock.C
 }
 
 // ListStreams mocks base method.
-func (m *MockStore) ListStreams(arg0 context.Context, arg1 db.ListStreamsParams) ([]db.Stream, error) {
+func (m *MockStore) ListStreams(arg0 context.Context, arg1 db.ListStreamsParams) ([]db.ListStreamsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListStreams", arg0, arg1)
-	ret0, _ := ret[0].([]db.Stream)
+	ret0, _ := ret[0].([]db.ListStreamsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

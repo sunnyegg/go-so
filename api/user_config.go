@@ -8,10 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
+	"github.com/sunnyegg/go-so/token"
 )
 
 type createUserConfigRequest struct {
-	UserID     int64          `json:"user_id" binding:"required"`
 	ConfigType db.ConfigTypes `json:"config_type" binding:"required"`
 	Value      string         `json:"value" binding:"required"`
 }
@@ -23,8 +23,10 @@ func (server *Server) createUserConfig(ctx *gin.Context) {
 		return
 	}
 
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
 	userConfig, err := server.store.CreateUserConfig(ctx, db.CreateUserConfigParams{
-		UserID:     req.UserID,
+		UserID:     authPayload.UserID,
 		ConfigType: req.ConfigType,
 		Value:      req.Value,
 	})
@@ -41,7 +43,6 @@ func (server *Server) createUserConfig(ctx *gin.Context) {
 }
 
 type getUserConfigRequest struct {
-	UserID     int64          `form:"user_id" binding:"required,min=1"`
 	ConfigType db.ConfigTypes `form:"config_type" binding:"required,min=1"`
 }
 
@@ -52,8 +53,10 @@ func (server *Server) getUserConfig(ctx *gin.Context) {
 		return
 	}
 
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
 	userConfig, err := server.store.GetUserConfig(ctx, db.GetUserConfigParams{
-		UserID:     req.UserID,
+		UserID:     authPayload.UserID,
 		ConfigType: req.ConfigType,
 	})
 	if err != nil {

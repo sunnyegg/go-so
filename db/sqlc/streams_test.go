@@ -52,16 +52,18 @@ func TestCreateStream(t *testing.T) {
 
 func TestGetStream(t *testing.T) {
 	stream1 := createRandomStream(t, nil)
-	stream2, err := testStore.GetStream(context.Background(), stream1.ID)
+	arg := GetStreamParams{
+		ID:     stream1.ID,
+		UserID: stream1.UserID,
+	}
+	stream2, err := testStore.GetStream(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, stream2)
 
-	require.Equal(t, stream1.UserID, stream2.UserID)
 	require.Equal(t, stream1.Title, stream2.Title)
 	require.Equal(t, stream1.GameName, stream2.GameName)
-	require.Equal(t, stream1.CreatedBy, stream2.CreatedBy)
+	require.NotZero(t, stream2.CreatedByUsername)
 	require.WithinDuration(t, stream1.StartedAt.Time, stream2.StartedAt.Time, time.Second)
-	require.WithinDuration(t, stream1.CreatedAt.Time, stream2.CreatedAt.Time, time.Second)
 }
 
 func TestDeleteStream(t *testing.T) {
@@ -69,7 +71,11 @@ func TestDeleteStream(t *testing.T) {
 	err := testStore.DeleteStream(context.Background(), stream1.ID)
 	require.NoError(t, err)
 
-	stream2, err := testStore.GetStream(context.Background(), stream1.ID)
+	arg := GetStreamParams{
+		ID:     stream1.ID,
+		UserID: stream1.UserID,
+	}
+	stream2, err := testStore.GetStream(context.Background(), arg)
 	require.Error(t, err)
 	require.Equal(t, err, pgx.ErrNoRows)
 	require.Empty(t, stream2)
@@ -105,6 +111,7 @@ func TestGetStreamAttendanceMembers(t *testing.T) {
 		Limit:    5,
 		Offset:   0,
 		StreamID: stream1.ID,
+		UserID:   stream1.UserID,
 	}
 
 	attendanceMembers, err := testStore.GetStreamAttendanceMembers(context.Background(), arg)

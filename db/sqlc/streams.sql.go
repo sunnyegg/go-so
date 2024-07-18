@@ -65,31 +65,42 @@ func (q *Queries) DeleteStream(ctx context.Context, id int64) error {
 }
 
 const getStream = `-- name: GetStream :one
-SELECT id, user_id, title, game_name, started_at, created_at, created_by FROM streams
-WHERE id = $1 LIMIT 1
+SELECT s.title, s.game_name, s.started_at, u.user_name as created_by_username
+FROM streams s JOIN users u ON s.user_id = u.id
+WHERE s.id = $1
+  AND s.user_id = $2
+LIMIT 1
 `
 
-func (q *Queries) GetStream(ctx context.Context, id int64) (Stream, error) {
-	row := q.db.QueryRow(ctx, getStream, id)
-	var i Stream
+type GetStreamParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+type GetStreamRow struct {
+	Title             string             `json:"title"`
+	GameName          string             `json:"game_name"`
+	StartedAt         pgtype.Timestamptz `json:"started_at"`
+	CreatedByUsername string             `json:"created_by_username"`
+}
+
+func (q *Queries) GetStream(ctx context.Context, arg GetStreamParams) (GetStreamRow, error) {
+	row := q.db.QueryRow(ctx, getStream, arg.ID, arg.UserID)
+	var i GetStreamRow
 	err := row.Scan(
-		&i.ID,
-		&i.UserID,
 		&i.Title,
 		&i.GameName,
 		&i.StartedAt,
-		&i.CreatedAt,
-		&i.CreatedBy,
+		&i.CreatedByUsername,
 	)
 	return i, err
 }
 
 const getStreamAttendanceMembers = `-- name: GetStreamAttendanceMembers :many
-SELECT s.title, s.game_name, s.started_at, am.username, am.is_shouted, am.present_at FROM attendance_members as am
-JOIN streams as s ON am.stream_id = s.id
-WHERE 1=1
-  AND stream_id = $3
-ORDER BY present_at ASC
+SELECT s.title, s.game_name, s.started_at, am.username, am.is_shouted, am.present_at
+FROM attendance_members as am JOIN streams as s ON am.stream_id = s.id
+WHERE am.stream_id = $3 AND s.user_id = $4
+ORDER BY am.present_at ASC
 LIMIT $1
 OFFSET $2
 `
@@ -98,6 +109,7 @@ type GetStreamAttendanceMembersParams struct {
 	Limit    int32 `json:"limit"`
 	Offset   int32 `json:"offset"`
 	StreamID int64 `json:"stream_id"`
+	UserID   int64 `json:"user_id"`
 }
 
 type GetStreamAttendanceMembersRow struct {
@@ -110,7 +122,12 @@ type GetStreamAttendanceMembersRow struct {
 }
 
 func (q *Queries) GetStreamAttendanceMembers(ctx context.Context, arg GetStreamAttendanceMembersParams) ([]GetStreamAttendanceMembersRow, error) {
-	rows, err := q.db.Query(ctx, getStreamAttendanceMembers, arg.Limit, arg.Offset, arg.StreamID)
+	rows, err := q.db.Query(ctx, getStreamAttendanceMembers,
+		arg.Limit,
+		arg.Offset,
+		arg.StreamID,
+		arg.UserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -137,10 +154,10 @@ func (q *Queries) GetStreamAttendanceMembers(ctx context.Context, arg GetStreamA
 }
 
 const listStreams = `-- name: ListStreams :many
-SELECT id, user_id, title, game_name, started_at, created_at, created_by FROM streams
-WHERE 1=1
-  AND user_id = $3
-ORDER BY id
+SELECT s.title, s.game_name, s.started_at, u.user_name as created_by_username
+FROM streams s JOIN users u ON s.user_id = u.id
+WHERE s.user_id = $3
+ORDER BY s.started_at DESC
 LIMIT $1
 OFFSET $2
 `
@@ -151,23 +168,27 @@ type ListStreamsParams struct {
 	UserID int64 `json:"user_id"`
 }
 
-func (q *Queries) ListStreams(ctx context.Context, arg ListStreamsParams) ([]Stream, error) {
+type ListStreamsRow struct {
+	Title             string             `json:"title"`
+	GameName          string             `json:"game_name"`
+	StartedAt         pgtype.Timestamptz `json:"started_at"`
+	CreatedByUsername string             `json:"created_by_username"`
+}
+
+func (q *Queries) ListStreams(ctx context.Context, arg ListStreamsParams) ([]ListStreamsRow, error) {
 	rows, err := q.db.Query(ctx, listStreams, arg.Limit, arg.Offset, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Stream{}
+	items := []ListStreamsRow{}
 	for rows.Next() {
-		var i Stream
+		var i ListStreamsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
 			&i.Title,
 			&i.GameName,
 			&i.StartedAt,
-			&i.CreatedAt,
-			&i.CreatedBy,
+			&i.CreatedByUsername,
 		); err != nil {
 			return nil, err
 		}

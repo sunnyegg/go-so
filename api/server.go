@@ -26,32 +26,34 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 		store:      store,
 		tokenMaker: tokenMaker,
 	}
-	router := gin.Default()
-	server.registerRoutes(router)
+	server.registerRoutes()
 
 	return server, nil
 }
 
-func (server *Server) registerRoutes(router *gin.Engine) {
+func (server *Server) registerRoutes() {
+	router := gin.Default()
+
 	// auth
 	router.POST("/auth/login", server.loginUser)
 
+	authRoutes := router.Group("/").Use(authMiddleware(server.tokenMaker))
+
 	// users
-	router.GET("/users/:id", server.getUser)
-	router.GET("/users", server.listUser)
+	authRoutes.GET("/users", server.getUser)
 
 	// streams
-	router.POST("/streams", server.createStream)
-	router.GET("/streams/:id", server.getStream)
-	router.GET("/streams", server.listStream)
-	router.GET("/streams/attendance_members", server.getStreamAttendanceMember)
+	authRoutes.POST("/streams", server.createStream)
+	authRoutes.GET("/streams/:id", server.getStream)
+	authRoutes.GET("/streams", server.listStream)
+	authRoutes.GET("/streams/attendance_members", server.getStreamAttendanceMember)
 
 	// attendance members
-	router.POST("/attendance_members", server.createAttendanceMember)
+	authRoutes.POST("/attendance_members", server.createAttendanceMember)
 
 	// user_configs
-	router.POST("/user_configs", server.createUserConfig)
-	router.GET("/user_configs", server.getUserConfig)
+	authRoutes.POST("/user_configs", server.createUserConfig)
+	authRoutes.GET("/user_configs", server.getUserConfig)
 
 	server.router = router
 }

@@ -45,7 +45,7 @@ func TestGetUserConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, userConfig2)
 
-	require.Equal(t, userConfig1.Value, userConfig2)
+	require.Equal(t, userConfig1.Value, userConfig2.Value)
 }
 
 func TestUpdateUserConfig(t *testing.T) {

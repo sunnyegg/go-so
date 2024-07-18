@@ -8,31 +8,39 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/require"
 	mockdb "github.com/sunnyegg/go-so/db/mock"
 	db "github.com/sunnyegg/go-so/db/sqlc"
+	"github.com/sunnyegg/go-so/token"
 	"github.com/sunnyegg/go-so/util"
 )
 
 func TestGetUserAPI(t *testing.T) {
 	user := randomUser()
+	getUserRow := db.GetUserRow{
+		ID:              user.ID,
+		UserLogin:       user.UserLogin,
+		UserName:        user.UserName,
+		ProfileImageUrl: user.ProfileImageUrl,
+	}
 
 	testCases := []struct {
 		name          string
-		userID        string
+		setupPath     func(t *testing.T, request *http.Request, tokenMaker token.Maker)
 		buildStubs    func(store *mockdb.MockStore)
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
-			name:   "OK",
-			userID: user.UserID,
+			name: "OK",
+			setupPath: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuth(t, request, tokenMaker, authorizationPrefixKey, user.ID, time.Minute)
+			},
 			buildStubs: func(store *mockdb.MockStore) {
-				userID, err := util.ParseStringToInt64(user.UserID)
-				require.NoError(t, err)
-				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(userID)).Times(1).Return(db.GetUserRow{
+				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.ID)).Times(1).Return(db.GetUserRow{
 					UserLogin:       user.UserLogin,
 					UserName:        user.UserName,
 					ProfileImageUrl: user.ProfileImageUrl,
@@ -40,39 +48,40 @@ func TestGetUserAPI(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyUser(t, recorder.Body, user)
+				requireBodyUser(t, recorder.Body, getUserRow)
 			},
 		},
 		{
-			name:   "NotFound",
-			userID: user.UserID,
+			name: "NotFound",
+			setupPath: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuth(t, request, tokenMaker, authorizationPrefixKey, user.ID, time.Minute)
+			},
 			buildStubs: func(store *mockdb.MockStore) {
-				userID, err := util.ParseStringToInt64(user.UserID)
-				require.NoError(t, err)
-				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(userID)).Times(1).Return(db.GetUserRow{}, pgx.ErrNoRows)
+				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.ID)).Times(1).Return(db.GetUserRow{}, pgx.ErrNoRows)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
 			},
 		},
 		{
-			name:   "InternalServerError",
-			userID: user.UserID,
+			name: "InternalServerError",
+			setupPath: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuth(t, request, tokenMaker, authorizationPrefixKey, user.ID, time.Minute)
+			},
 			buildStubs: func(store *mockdb.MockStore) {
-				userID, err := util.ParseStringToInt64(user.UserID)
-				require.NoError(t, err)
-				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(userID)).Times(1).Return(db.GetUserRow{}, errors.New("some error"))
+				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.ID)).Times(1).Return(db.GetUserRow{}, errors.New("some error"))
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
 		{
-			name:       "BadRequest",
-			userID:     "abc",
+			name: "Unauthorized",
+			setupPath: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+			},
 			buildStubs: func(store *mockdb.MockStore) {},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
 			},
 		},
 	}
@@ -88,9 +97,11 @@ func TestGetUserAPI(t *testing.T) {
 			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
-			url := "/users/" + tc.userID
+			url := "/users"
 			req, err := http.NewRequest("GET", url, nil)
 			require.NoError(t, err)
+
+			tc.setupPath(t, req, server.tokenMaker)
 
 			server.router.ServeHTTP(recorder, req)
 			tc.checkResponse(t, recorder)
@@ -98,16 +109,19 @@ func TestGetUserAPI(t *testing.T) {
 	}
 }
 
-func randomUser() loginUserRequest {
-	return loginUserRequest{
-		UserID:          util.ParseIntToString(int(util.RandomInt(1, 1000))),
+func randomUser() db.User {
+	return db.User{
+		ID:              util.RandomInt(1, 1000),
+		UserID:          util.RandomUserID(),
 		UserLogin:       util.RandomString(10),
 		UserName:        util.RandomString(10),
 		ProfileImageUrl: util.RandomString(10),
+		CreatedAt:       util.StringToTimestamp(time.Now().Format(time.RFC3339)),
+		UpdatedAt:       util.StringToTimestamp(time.Now().Format(time.RFC3339)),
 	}
 }
 
-func requireBodyUser(t *testing.T, body *bytes.Buffer, user loginUserRequest) {
+func requireBodyUser(t *testing.T, body *bytes.Buffer, user db.GetUserRow) {
 	data, err := io.ReadAll(body)
 	require.NoError(t, err)
 

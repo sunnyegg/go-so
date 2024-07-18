@@ -10,10 +10,8 @@ VALUES
 RETURNING *;
 
 -- name: GetUserConfig :one
-SELECT "value" FROM user_configs
-WHERE 1=1
-  AND user_id = $1
-  AND config_type = $2
+SELECT * FROM user_configs
+WHERE user_id = $1 AND config_type = $2
 LIMIT 1;
 
 -- name: UpdateUserConfig :one

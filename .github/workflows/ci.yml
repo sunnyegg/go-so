@@ -42,14 +42,11 @@ jobs:
         sudo mv migrate /usr/bin
         which migrate
 
-    - name: Install sqlc
-      run: sudo snap install sqlc
-
     - name: Run migrations
       run: make migrateup
 
     - name: Create environment file
-      run: echo $'DB_SOURCE=postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable\nSERVER_ADDRESS=localhost:9000' > app.env
+      run: echo $'DB_SOURCE=postgresql://postgres:sopostgres@localhost:6666/go-so?sslmode=disable\nSERVER_ADDRESS=localhost:9000\nTOKEN_SYMMETRIC_KEY=12345678901234567890123456789012\nACCESS_TOKEN_DURATION=15m' > app.env
 
     - name: Test
       run: make test

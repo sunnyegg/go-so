@@ -52,10 +52,8 @@ func (q *Queries) DeleteUserConfig(ctx context.Context, id int64) error {
 }
 
 const getUserConfig = `-- name: GetUserConfig :one
-SELECT "value" FROM user_configs
-WHERE 1=1
-  AND user_id = $1
-  AND config_type = $2
+SELECT id, user_id, config_type, value, created_at, updated_at FROM user_configs
+WHERE user_id = $1 AND config_type = $2
 LIMIT 1
 `
 
@@ -64,11 +62,18 @@ type GetUserConfigParams struct {
 	ConfigType ConfigTypes `json:"config_type"`
 }
 
-func (q *Queries) GetUserConfig(ctx context.Context, arg GetUserConfigParams) (string, error) {
+func (q *Queries) GetUserConfig(ctx context.Context, arg GetUserConfigParams) (UserConfig, error) {
 	row := q.db.QueryRow(ctx, getUserConfig, arg.UserID, arg.ConfigType)
-	var value string
-	err := row.Scan(&value)
-	return value, err
+	var i UserConfig
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ConfigType,
+		&i.Value,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateUserConfig = `-- name: UpdateUserConfig :one

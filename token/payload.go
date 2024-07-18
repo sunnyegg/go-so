@@ -14,12 +14,12 @@ var (
 
 type Payload struct {
 	ID        uuid.UUID `json:"id"`
-	UserID    string    `json:"user_id"`
+	UserID    int64     `json:"user_id"`
 	IssuedAt  time.Time `json:"issued_at"`
 	ExpiredAt time.Time `json:"expired_at"`
 }
 
-func NewPayload(userID string, duration time.Duration) (*Payload, error) {
+func NewPayload(userID int64, duration time.Duration) (*Payload, error) {
 	uid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
