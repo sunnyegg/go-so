@@ -62,7 +62,7 @@ func TestGetStream(t *testing.T) {
 
 	require.Equal(t, stream1.Title, stream2.Title)
 	require.Equal(t, stream1.GameName, stream2.GameName)
-	require.NotZero(t, stream2.CreatedByUsername)
+	require.NotZero(t, stream2.CreatedBy)
 	require.WithinDuration(t, stream1.StartedAt.Time, stream2.StartedAt.Time, time.Second)
 }
 

@@ -65,7 +65,7 @@ func (q *Queries) DeleteStream(ctx context.Context, id int64) error {
 }
 
 const getStream = `-- name: GetStream :one
-SELECT s.title, s.game_name, s.started_at, u.user_name as created_by_username
+SELECT s.id, s.title, s.game_name, s.started_at, u.user_name as created_by
 FROM streams s JOIN users u ON s.user_id = u.id
 WHERE s.id = $1
   AND s.user_id = $2
@@ -78,20 +78,22 @@ type GetStreamParams struct {
 }
 
 type GetStreamRow struct {
-	Title             string             `json:"title"`
-	GameName          string             `json:"game_name"`
-	StartedAt         pgtype.Timestamptz `json:"started_at"`
-	CreatedByUsername string             `json:"created_by_username"`
+	ID        int64              `json:"id"`
+	Title     string             `json:"title"`
+	GameName  string             `json:"game_name"`
+	StartedAt pgtype.Timestamptz `json:"started_at"`
+	CreatedBy string             `json:"created_by"`
 }
 
 func (q *Queries) GetStream(ctx context.Context, arg GetStreamParams) (GetStreamRow, error) {
 	row := q.db.QueryRow(ctx, getStream, arg.ID, arg.UserID)
 	var i GetStreamRow
 	err := row.Scan(
+		&i.ID,
 		&i.Title,
 		&i.GameName,
 		&i.StartedAt,
-		&i.CreatedByUsername,
+		&i.CreatedBy,
 	)
 	return i, err
 }
@@ -154,7 +156,7 @@ func (q *Queries) GetStreamAttendanceMembers(ctx context.Context, arg GetStreamA
 }
 
 const listStreams = `-- name: ListStreams :many
-SELECT s.title, s.game_name, s.started_at, u.user_name as created_by_username
+SELECT s.id, s.title, s.game_name, s.started_at, u.user_name as created_by
 FROM streams s JOIN users u ON s.user_id = u.id
 WHERE s.user_id = $3
 ORDER BY s.started_at DESC
@@ -169,10 +171,11 @@ type ListStreamsParams struct {
 }
 
 type ListStreamsRow struct {
-	Title             string             `json:"title"`
-	GameName          string             `json:"game_name"`
-	StartedAt         pgtype.Timestamptz `json:"started_at"`
-	CreatedByUsername string             `json:"created_by_username"`
+	ID        int64              `json:"id"`
+	Title     string             `json:"title"`
+	GameName  string             `json:"game_name"`
+	StartedAt pgtype.Timestamptz `json:"started_at"`
+	CreatedBy string             `json:"created_by"`
 }
 
 func (q *Queries) ListStreams(ctx context.Context, arg ListStreamsParams) ([]ListStreamsRow, error) {
@@ -185,10 +188,11 @@ func (q *Queries) ListStreams(ctx context.Context, arg ListStreamsParams) ([]Lis
 	for rows.Next() {
 		var i ListStreamsRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.Title,
 			&i.GameName,
 			&i.StartedAt,
-			&i.CreatedByUsername,
+			&i.CreatedBy,
 		); err != nil {
 			return nil, err
 		}

@@ -4,22 +4,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func TestHashToken(t *testing.T) {
-	token1, err := HashToken("test")
+func TestEncrypt(t *testing.T) {
+	plainText := "Hello, World!"
+	cipherText, err := encrypt(plainText, "examplekey123456")
 	require.NoError(t, err)
-	require.NotEmpty(t, token1)
+	require.NotEmpty(t, cipherText)
 
-	err = VerifyToken("test", token1)
+	decryptedText, err := decrypt(cipherText, "examplekey123456")
 	require.NoError(t, err)
-
-	err = VerifyToken("wrong", token1)
-	require.EqualError(t, err, bcrypt.ErrMismatchedHashAndPassword.Error())
-
-	// if using the same string, it should return different hash
-	token2, err := HashToken("test")
-	require.NoError(t, err)
-	require.NotEqual(t, token1, token2)
+	require.Equal(t, plainText, decryptedText)
 }

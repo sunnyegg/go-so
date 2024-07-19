@@ -12,14 +12,14 @@ VALUES
 RETURNING *;
 
 -- name: GetStream :one
-SELECT s.title, s.game_name, s.started_at, u.user_name as created_by_username
+SELECT s.id, s.title, s.game_name, s.started_at, u.user_name as created_by
 FROM streams s JOIN users u ON s.user_id = u.id
 WHERE s.id = $1
   AND s.user_id = $2
 LIMIT 1;
 
 -- name: ListStreams :many
-SELECT s.title, s.game_name, s.started_at, u.user_name as created_by_username
+SELECT s.id, s.title, s.game_name, s.started_at, u.user_name as created_by
 FROM streams s JOIN users u ON s.user_id = u.id
 WHERE s.user_id = $3
 ORDER BY s.started_at DESC

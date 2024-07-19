@@ -86,7 +86,6 @@ func (server *Server) getStream(ctx *gin.Context) {
 type listStreamRequest struct {
 	PageID   int32 `form:"page_id" binding:"required,min=1"`
 	PageSize int32 `form:"page_size" binding:"required,min=5,max=10"`
-	UserID   int64 `form:"user_id" binding:"required,min=1"`
 }
 
 func (server *Server) listStream(ctx *gin.Context) {
