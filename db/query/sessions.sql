@@ -18,3 +18,7 @@ RETURNING *;
 SELECT * FROM sessions
 WHERE id = $1 AND user_id = $2
 LIMIT 1;
+
+-- name: ListSession :many
+SELECT * FROM sessions
+ORDER BY created_at ASC;

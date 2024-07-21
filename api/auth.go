@@ -37,7 +37,6 @@ type loginUserResponse struct {
 }
 
 var tempState = make(map[string]bool, 0)
-var tempToken = make(map[string]string, 0)
 
 func (server *Server) loginUser(ctx *gin.Context) {
 	var req loginUserRequest

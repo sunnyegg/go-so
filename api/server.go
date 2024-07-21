@@ -1,9 +1,11 @@
 package api
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sunnyegg/go-so/cron"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/token"
 	"github.com/sunnyegg/go-so/util"
@@ -27,6 +29,7 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 		tokenMaker: tokenMaker,
 	}
 	server.registerRoutes()
+	server.registerCron()
 
 	return server, nil
 }
@@ -58,6 +61,13 @@ func (server *Server) registerRoutes() {
 	authRoutes.GET("/user_configs", server.getUserConfig)
 
 	server.router = router
+}
+
+func (server *Server) registerCron() {
+	cronClient := cron.NewCron()
+	cronClient.AddFunc("@every 1h", cron.ValidateToken(context.Background(), server.store, server.config))
+
+	cronClient.Start()
 }
 
 func (server *Server) Start(address string) error {

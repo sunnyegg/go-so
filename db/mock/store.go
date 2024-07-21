@@ -242,6 +242,21 @@ func (mr *MockStoreMockRecorder) GetUserConfig(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserConfig", reflect.TypeOf((*MockStore)(nil).GetUserConfig), arg0, arg1)
 }
 
+// ListSession mocks base method.
+func (m *MockStore) ListSession(arg0 context.Context) ([]db.Session, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSession", arg0)
+	ret0, _ := ret[0].([]db.Session)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSession indicates an expected call of ListSession.
+func (mr *MockStoreMockRecorder) ListSession(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSession", reflect.TypeOf((*MockStore)(nil).ListSession), arg0)
+}
+
 // ListStreams mocks base method.
 func (m *MockStore) ListStreams(arg0 context.Context, arg1 db.ListStreamsParams) ([]db.ListStreamsRow, error) {
 	m.ctrl.T.Helper()

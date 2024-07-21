@@ -92,3 +92,38 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (Session
 	)
 	return i, err
 }
+
+const listSession = `-- name: ListSession :many
+SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token FROM sessions
+ORDER BY created_at ASC
+`
+
+func (q *Queries) ListSession(ctx context.Context) ([]Session, error) {
+	rows, err := q.db.Query(ctx, listSession)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Session{}
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.RefreshToken,
+			&i.UserAgent,
+			&i.ClientIp,
+			&i.IsBlocked,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.EncryptedTwitchToken,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
