@@ -7,10 +7,11 @@ INSERT INTO sessions
   user_agent,
   client_ip,
   is_blocked,
-  expires_at
+  expires_at,
+  encrypted_twitch_token
 )
 VALUES
-($1, $2, $3, $4, $5, $6, $7)
+($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetSession :one

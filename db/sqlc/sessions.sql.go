@@ -20,21 +20,23 @@ INSERT INTO sessions
   user_agent,
   client_ip,
   is_blocked,
-  expires_at
+  expires_at,
+  encrypted_twitch_token
 )
 VALUES
-($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at
+($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token
 `
 
 type CreateSessionParams struct {
-	ID           pgtype.UUID        `json:"id"`
-	UserID       int64              `json:"user_id"`
-	RefreshToken string             `json:"refresh_token"`
-	UserAgent    string             `json:"user_agent"`
-	ClientIp     string             `json:"client_ip"`
-	IsBlocked    bool               `json:"is_blocked"`
-	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+	ID                   pgtype.UUID        `json:"id"`
+	UserID               int64              `json:"user_id"`
+	RefreshToken         string             `json:"refresh_token"`
+	UserAgent            string             `json:"user_agent"`
+	ClientIp             string             `json:"client_ip"`
+	IsBlocked            bool               `json:"is_blocked"`
+	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
+	EncryptedTwitchToken string             `json:"encrypted_twitch_token"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
@@ -46,6 +48,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		arg.ClientIp,
 		arg.IsBlocked,
 		arg.ExpiresAt,
+		arg.EncryptedTwitchToken,
 	)
 	var i Session
 	err := row.Scan(
@@ -57,12 +60,13 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.IsBlocked,
 		&i.ExpiresAt,
 		&i.CreatedAt,
+		&i.EncryptedTwitchToken,
 	)
 	return i, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at FROM sessions
+SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token FROM sessions
 WHERE id = $1 AND user_id = $2
 LIMIT 1
 `
@@ -84,6 +88,7 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (Session
 		&i.IsBlocked,
 		&i.ExpiresAt,
 		&i.CreatedAt,
+		&i.EncryptedTwitchToken,
 	)
 	return i, err
 }

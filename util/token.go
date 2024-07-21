@@ -10,7 +10,7 @@ import (
 )
 
 // encrypt encrypts plainText using AES encryption with the given key
-func encrypt(plainText, key string) (string, error) {
+func Encrypt(plainText, key string) (string, error) {
 	keyBytes := []byte(key)
 	plainBytes := []byte(plainText)
 
@@ -32,7 +32,7 @@ func encrypt(plainText, key string) (string, error) {
 }
 
 // decrypt decrypts cipherText using AES decryption with the given key
-func decrypt(cipherText, key string) (string, error) {
+func Decrypt(cipherText, key string) (string, error) {
 	keyBytes := []byte(key)
 	cipherBytes, err := hex.DecodeString(cipherText)
 	if err != nil {

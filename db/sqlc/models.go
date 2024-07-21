@@ -66,14 +66,15 @@ type AttendanceMember struct {
 }
 
 type Session struct {
-	ID           pgtype.UUID        `json:"id"`
-	UserID       int64              `json:"user_id"`
-	RefreshToken string             `json:"refresh_token"`
-	UserAgent    string             `json:"user_agent"`
-	ClientIp     string             `json:"client_ip"`
-	IsBlocked    bool               `json:"is_blocked"`
-	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID                   pgtype.UUID        `json:"id"`
+	UserID               int64              `json:"user_id"`
+	RefreshToken         string             `json:"refresh_token"`
+	UserAgent            string             `json:"user_agent"`
+	ClientIp             string             `json:"client_ip"`
+	IsBlocked            bool               `json:"is_blocked"`
+	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	EncryptedTwitchToken string             `json:"encrypted_twitch_token"`
 }
 
 type Stream struct {

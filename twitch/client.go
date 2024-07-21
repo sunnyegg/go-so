@@ -10,14 +10,14 @@ import (
 )
 
 func NewClient(clientID, clientSecret, redirectURI string) *Client {
-	tokenURL := "https://id.twitch.tv/oauth2/token"
+	oauthURL := "https://id.twitch.tv/oauth2"
 	helixURL := "https://api.twitch.tv/helix"
 
 	return &Client{
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		redirectURI:  redirectURI,
-		tokenURL:     tokenURL,
+		oauthURL:     oauthURL,
 		helixURL:     helixURL,
 	}
 }
@@ -32,7 +32,7 @@ func (client *Client) GetOAuthToken(code string) (*OAuthToken, error) {
 	params.Set("grant_type", "authorization_code")
 	params.Set("redirect_uri", "https://wild-grapes-flow.loca.lt/auth/login")
 
-	req, err := http.NewRequest("POST", client.tokenURL, bytes.NewBufferString(params.Encode()))
+	req, err := http.NewRequest("POST", client.oauthURL+"/token", bytes.NewBufferString(params.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +55,40 @@ func (client *Client) GetOAuthToken(code string) (*OAuthToken, error) {
 
 	// convert bytes to struct
 	var token = OAuthToken{}
+	err = json.Unmarshal(resBody, &token)
+	if err != nil {
+		return nil, err
+	}
+
+	return &token, nil
+}
+
+func (client *Client) ValidateOAuthToken(accessToken string) (*ValidateOAuthToken, error) {
+	var httpClient = &http.Client{}
+
+	req, err := http.NewRequest("GET", client.oauthURL+"/validate", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "OAuth "+accessToken)
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, errors.New("failed to validate oauth token: " + string(resBody))
+	}
+
+	// convert bytes to struct
+	var token = ValidateOAuthToken{}
 	err = json.Unmarshal(resBody, &token)
 	if err != nil {
 		return nil, err

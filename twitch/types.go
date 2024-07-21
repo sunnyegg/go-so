@@ -4,7 +4,7 @@ type Client struct {
 	clientID     string
 	clientSecret string
 	redirectURI  string
-	tokenURL     string
+	oauthURL     string
 	helixURL     string
 }
 
@@ -28,4 +28,12 @@ type UserInfoData struct {
 	Broadcaster     bool   `json:"broadcaster"`
 	Description     string `json:"description"`
 	ProfileImageURL string `json:"profile_image_url"`
+}
+
+type ValidateOAuthToken struct {
+	ClientID  string   `json:"client_id"`
+	Login     string   `json:"login"`
+	Scopes    []string `json:"scopes"`
+	UserID    string   `json:"user_id"`
+	ExpiresIn int      `json:"expires_in"`
 }

@@ -1,8 +1,8 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -37,6 +37,7 @@ type loginUserResponse struct {
 }
 
 var tempState = make(map[string]bool, 0)
+var tempToken = make(map[string]string, 0)
 
 func (server *Server) loginUser(ctx *gin.Context) {
 	var req loginUserRequest
@@ -65,14 +66,19 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
+	// validate token
+	_, err = twClient.ValidateOAuthToken(token.AccessToken)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
 	// get user info twitch
 	userInfo, err := twClient.GetUserInfo(token.AccessToken, "")
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-
-	fmt.Println(userInfo)
 
 	// check user login
 	// if not exists, createUser
@@ -82,6 +88,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		UserLogin:       userInfo.Login,
 		UserName:        userInfo.DisplayName,
 		ProfileImageUrl: userInfo.ProfileImageURL,
+		Token:           token,
 	})
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
@@ -96,6 +103,7 @@ type createOrUpdateUserArg struct {
 	UserLogin       string
 	UserName        string
 	ProfileImageUrl string
+	Token           *twitch.OAuthToken
 }
 
 func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUserArg) (loginUserResponse, error) {
@@ -105,14 +113,14 @@ func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUser
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			// create user
-			arg := db.CreateUserParams{
+			argParams := db.CreateUserParams{
 				UserID:          arg.UserID,
 				UserLogin:       arg.UserLogin,
 				UserName:        arg.UserName,
 				ProfileImageUrl: arg.ProfileImageUrl,
 			}
 
-			user, err := server.store.CreateUser(ctx, arg)
+			user, err := server.store.CreateUser(ctx, argParams)
 			if err != nil {
 				// duplicate key error
 				// should not be happened
@@ -125,7 +133,7 @@ func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUser
 				return output, err
 			}
 
-			rsp, err := createLoginUserResponse(ctx, user, server)
+			rsp, err := createLoginUserResponse(ctx, server, user, arg.Token)
 			if err != nil {
 				return output, err
 			}
@@ -150,7 +158,7 @@ func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUser
 		return output, err
 	}
 
-	rsp, err := createLoginUserResponse(ctx, user, server)
+	rsp, err := createLoginUserResponse(ctx, server, user, arg.Token)
 	if err != nil {
 		return output, err
 	}
@@ -159,7 +167,7 @@ func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUser
 	return output, nil
 }
 
-func createLoginUserResponse(ctx *gin.Context, user db.User, server *Server) (loginUserResponse, error) {
+func createLoginUserResponse(ctx *gin.Context, server *Server, user db.User, token *twitch.OAuthToken) (loginUserResponse, error) {
 	// create token
 	accessToken, _, err := server.tokenMaker.MakeToken(user.ID, server.config.AccessTokenDuration)
 	if err != nil {
@@ -172,15 +180,26 @@ func createLoginUserResponse(ctx *gin.Context, user db.User, server *Server) (lo
 		return loginUserResponse{}, err
 	}
 
+	// encrypt token
+	tokenBytes, err := json.Marshal(token)
+	if err != nil {
+		return loginUserResponse{}, err
+	}
+	encryptedToken, err := util.Encrypt(string(tokenBytes), server.config.TokenSymmetricKey)
+	if err != nil {
+		return loginUserResponse{}, err
+	}
+
 	// create session
 	_, err = server.store.CreateSession(ctx, db.CreateSessionParams{
-		ID:           util.UUIDToUUID(payload.ID),
-		UserID:       user.ID,
-		RefreshToken: refreshToken,
-		UserAgent:    ctx.Request.UserAgent(),
-		ClientIp:     ctx.ClientIP(),
-		IsBlocked:    false,
-		ExpiresAt:    util.StringToTimestamp(payload.ExpiredAt.Format(time.RFC3339)),
+		ID:                   util.UUIDToUUID(payload.ID),
+		UserID:               user.ID,
+		RefreshToken:         refreshToken,
+		UserAgent:            ctx.Request.UserAgent(),
+		ClientIp:             ctx.ClientIP(),
+		IsBlocked:            false,
+		ExpiresAt:            util.StringToTimestamp(payload.ExpiredAt.Format(time.RFC3339)),
+		EncryptedTwitchToken: encryptedToken,
 	})
 	if err != nil {
 		return loginUserResponse{}, err
