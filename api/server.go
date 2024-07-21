@@ -35,8 +35,9 @@ func (server *Server) registerRoutes() {
 	router := gin.Default()
 
 	// auth
-	router.POST("/auth/login", server.loginUser)
+	router.GET("/auth/login", server.loginUser)
 	router.POST("/auth/refresh", server.refreshUser)
+	router.GET("/auth/state", server.createState)
 
 	authRoutes := router.Group("/").Use(authMiddleware(server.tokenMaker))
 

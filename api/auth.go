@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -10,15 +11,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
+	"github.com/sunnyegg/go-so/twitch"
 	"github.com/sunnyegg/go-so/util"
 )
 
 type loginUserRequest struct {
-	UserID          string `json:"user_id" binding:"required"`
-	UserLogin       string `json:"user_login" binding:"required"`
-	UserName        string `json:"user_name" binding:"required"`
-	ProfileImageUrl string `json:"profile_image_url"`
-	Token           string `json:"token" binding:"required"`
+	Code             string `form:"code"`
+	Scope            string `form:"scope"`
+	State            string `form:"state" binding:"required"`
+	Error            string `form:"error"`
+	ErrorDescription string `form:"error_description"`
 }
 
 type userResponse struct {
@@ -34,25 +36,80 @@ type loginUserResponse struct {
 	User         userResponse `json:"user"`
 }
 
+var tempState = make(map[string]bool, 0)
+
 func (server *Server) loginUser(ctx *gin.Context) {
 	var req loginUserRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBindQuery(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
+	if req.Error != "" {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("unauthorized")))
+		return
+	}
+
+	// check state
+	if _, ok := tempState[req.State]; !ok {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid state")))
+		return
+	}
+	delete(tempState, req.State)
+
+	// login twitch
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
+	token, err := twClient.GetOAuthToken(req.Code)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
+	// get user info twitch
+	userInfo, err := twClient.GetUserInfo(token.AccessToken, "")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	fmt.Println(userInfo)
+
 	// check user login
 	// if not exists, createUser
 	// else updateUser
-	_, err := server.store.GetUserByUserID(ctx, req.UserID)
+	rsp, err := createOrUpdateUser(ctx, server, createOrUpdateUserArg{
+		UserID:          userInfo.ID,
+		UserLogin:       userInfo.Login,
+		UserName:        userInfo.DisplayName,
+		ProfileImageUrl: userInfo.ProfileImageURL,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, rsp)
+}
+
+type createOrUpdateUserArg struct {
+	UserID          string
+	UserLogin       string
+	UserName        string
+	ProfileImageUrl string
+}
+
+func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUserArg) (loginUserResponse, error) {
+	var output loginUserResponse
+
+	_, err := server.store.GetUserByUserID(ctx, arg.UserID) // userId twitch
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			// create user
 			arg := db.CreateUserParams{
-				UserID:          req.UserID,
-				UserLogin:       req.UserLogin,
-				UserName:        req.UserName,
-				ProfileImageUrl: req.ProfileImageUrl,
+				UserID:          arg.UserID,
+				UserLogin:       arg.UserLogin,
+				UserName:        arg.UserName,
+				ProfileImageUrl: arg.ProfileImageUrl,
 			}
 
 			user, err := server.store.CreateUser(ctx, arg)
@@ -61,49 +118,45 @@ func (server *Server) loginUser(ctx *gin.Context) {
 				// should not be happened
 				// because we already checked user_id in GetUserByUserID
 				if strings.Contains(err.Error(), "duplicate key") {
-					ctx.JSON(http.StatusForbidden, errorResponse(errors.New("unauthorized")))
-					return
+					err = errors.New("unauthorized")
+					return output, err
 				}
 
-				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-				return
+				return output, err
 			}
 
 			rsp, err := createLoginUserResponse(ctx, user, server)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-				return
+				return output, err
 			}
 
-			ctx.JSON(http.StatusOK, rsp)
-			return
+			output = rsp
+			return output, nil
 		}
 
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
+		return output, err
 	}
 
 	// update user
-	arg := db.UpdateUserParams{
-		UserID:          req.UserID,
-		UserLogin:       req.UserLogin,
-		UserName:        req.UserName,
-		ProfileImageUrl: req.ProfileImageUrl,
+	updateUserArg := db.UpdateUserParams{
+		UserID:          arg.UserID,
+		UserLogin:       arg.UserLogin,
+		UserName:        arg.UserName,
+		ProfileImageUrl: arg.ProfileImageUrl,
 	}
 
-	user, err := server.store.UpdateUser(ctx, arg)
+	user, err := server.store.UpdateUser(ctx, updateUserArg)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
+		return output, err
 	}
 
 	rsp, err := createLoginUserResponse(ctx, user, server)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
+		return output, err
 	}
 
-	ctx.JSON(http.StatusOK, rsp)
+	output = rsp
+	return output, nil
 }
 
 func createLoginUserResponse(ctx *gin.Context, user db.User, server *Server) (loginUserResponse, error) {
@@ -207,4 +260,21 @@ func (server *Server) refreshUser(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, accessToken)
+}
+
+type createStateResponse struct {
+	URL string `json:"url"`
+}
+
+func (server *Server) createState(ctx *gin.Context) {
+	scope := "user:read:moderated_channels user:write:chat moderator:manage:shoutouts" // TODO: change to get scope from db scope
+	state := util.RandomString(16)
+	tempState[state] = true
+	redirectURI := "https://wild-grapes-flow.loca.lt/auth/login"
+
+	url := "https://id.twitch.tv/oauth2/authorize?client_id=" + server.config.TwitchClientID + "&redirect_uri=" + redirectURI + "&response_type=code&scope=" + scope + "&state=" + state
+
+	ctx.JSON(http.StatusOK, createStateResponse{
+		URL: url,
+	})
 }

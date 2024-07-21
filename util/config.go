@@ -14,6 +14,9 @@ type Config struct {
 	TokenSymmetricKey    string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
 	AccessTokenDuration  time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 	RefreshTokenDuration time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
+	TwitchClientID       string        `mapstructure:"TWITCH_CLIENT_ID"`
+	TwitchClientSecret   string        `mapstructure:"TWITCH_SECRET_ID"`
+	FeAddress            string        `mapstructure:"FE_ADDRESS"`
 }
 
 // LoadConfig loads the configuration from file or environment variables
