@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sunnyegg/go-so/token"
+	"github.com/jackc/pgx/v5"
+	db "github.com/sunnyegg/go-so/db/sqlc"
+	"github.com/sunnyegg/go-so/util"
 )
 
 const (
@@ -15,7 +17,7 @@ const (
 	authorizationPayloadKey = "authorization_payload"
 )
 
-func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
+func authMiddleware(server *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader(authorizationHeaderKey)
 		if len(token) == 0 {
@@ -39,8 +41,30 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 		}
 
 		accessToken := field[1]
-		payload, err := tokenMaker.VerifyToken(accessToken)
+		payload, err := server.tokenMaker.VerifyToken(accessToken)
 		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+
+		// check if user is blocked
+		session, err := server.store.GetSession(c, db.GetSessionParams{
+			ID:     util.UUIDToUUID(payload.ID),
+			UserID: payload.UserID,
+		})
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				err := errors.New("session not found")
+				c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+				return
+			}
+
+			c.AbortWithStatusJSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+
+		if session.IsBlocked {
+			err := errors.New("session is blocked")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
 			return
 		}

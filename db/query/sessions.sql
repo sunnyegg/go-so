@@ -22,3 +22,10 @@ LIMIT 1;
 -- name: ListSession :many
 SELECT * FROM sessions
 ORDER BY created_at ASC;
+
+-- name: UpdateSession :exec
+UPDATE sessions
+SET
+  encrypted_twitch_token = $2
+WHERE id = $1
+RETURNING *;

@@ -127,3 +127,21 @@ func (q *Queries) ListSession(ctx context.Context) ([]Session, error) {
 	}
 	return items, nil
 }
+
+const updateSession = `-- name: UpdateSession :exec
+UPDATE sessions
+SET
+  encrypted_twitch_token = $2
+WHERE id = $1
+RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token
+`
+
+type UpdateSessionParams struct {
+	ID                   pgtype.UUID `json:"id"`
+	EncryptedTwitchToken string      `json:"encrypted_twitch_token"`
+}
+
+func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) error {
+	_, err := q.db.Exec(ctx, updateSession, arg.ID, arg.EncryptedTwitchToken)
+	return err
+}

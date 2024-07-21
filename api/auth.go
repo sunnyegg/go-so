@@ -30,7 +30,6 @@ type userResponse struct {
 }
 
 type loginUserResponse struct {
-	SessionID    uuid.UUID    `json:"session_id"`
 	AccessToken  string       `json:"access_token"`
 	RefreshToken string       `json:"refresh_token"`
 	User         userResponse `json:"user"`
@@ -66,14 +65,14 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	}
 
 	// validate token
-	_, err = twClient.ValidateOAuthToken(token.AccessToken)
+	err = twClient.ValidateOAuthToken(token.AccessToken)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
 	// get user info twitch
-	userInfo, err := twClient.GetUserInfo(token.AccessToken, "")
+	userInfo, err := twClient.GetUserInfo(token.AccessToken, "", "")
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -168,13 +167,13 @@ func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUser
 
 func createLoginUserResponse(ctx *gin.Context, server *Server, user db.User, token *twitch.OAuthToken) (loginUserResponse, error) {
 	// create token
-	accessToken, _, err := server.tokenMaker.MakeToken(user.ID, server.config.AccessTokenDuration)
+	accessToken, accessTokenPayload, err := server.tokenMaker.MakeToken(user.ID, server.config.AccessTokenDuration)
 	if err != nil {
 		return loginUserResponse{}, err
 	}
 
 	// refresh token
-	refreshToken, payload, err := server.tokenMaker.MakeToken(user.ID, server.config.RefreshTokenDuration*7)
+	refreshToken, refreshTokenPayload, err := server.tokenMaker.MakeToken(user.ID, server.config.RefreshTokenDuration*7)
 	if err != nil {
 		return loginUserResponse{}, err
 	}
@@ -191,13 +190,13 @@ func createLoginUserResponse(ctx *gin.Context, server *Server, user db.User, tok
 
 	// create session
 	_, err = server.store.CreateSession(ctx, db.CreateSessionParams{
-		ID:                   util.UUIDToUUID(payload.ID),
+		ID:                   util.UUIDToUUID(accessTokenPayload.ID),
 		UserID:               user.ID,
 		RefreshToken:         refreshToken,
 		UserAgent:            ctx.Request.UserAgent(),
 		ClientIp:             ctx.ClientIP(),
 		IsBlocked:            false,
-		ExpiresAt:            util.StringToTimestamp(payload.ExpiredAt.Format(time.RFC3339)),
+		ExpiresAt:            util.StringToTimestamp(refreshTokenPayload.ExpiredAt.Format(time.RFC3339)),
 		EncryptedTwitchToken: encryptedToken,
 	})
 	if err != nil {
@@ -205,7 +204,6 @@ func createLoginUserResponse(ctx *gin.Context, server *Server, user db.User, tok
 	}
 
 	return loginUserResponse{
-		SessionID:    payload.ID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		User: userResponse{

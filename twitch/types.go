@@ -1,5 +1,9 @@
 package twitch
 
+const (
+	ErrExpiredToken = "expired token"
+)
+
 type Client struct {
 	clientID     string
 	clientSecret string

@@ -42,7 +42,7 @@ func (server *Server) registerRoutes() {
 	router.POST("/auth/refresh", server.refreshUser)
 	router.GET("/auth/state", server.createState)
 
-	authRoutes := router.Group("/").Use(authMiddleware(server.tokenMaker))
+	authRoutes := router.Group("/").Use(authMiddleware(server))
 
 	// users
 	authRoutes.GET("/users", server.getUser)
@@ -59,6 +59,9 @@ func (server *Server) registerRoutes() {
 	// user_configs
 	authRoutes.POST("/user_configs", server.createUserConfig)
 	authRoutes.GET("/user_configs", server.getUserConfig)
+
+	// twitch
+	authRoutes.GET("/twitch/user", server.getTwitchUser)
 
 	server.router = router
 }
