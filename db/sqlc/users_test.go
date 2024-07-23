@@ -95,3 +95,15 @@ func TestListUsers(t *testing.T) {
 		require.NotEmpty(t, user)
 	}
 }
+
+func TestGetUserByUserID(t *testing.T) {
+	user1 := createRandomUser(t)
+	user2, err := testStore.GetUserByUserID(context.Background(), user1.UserID)
+	require.NoError(t, err)
+	require.NotEmpty(t, user2)
+
+	require.Equal(t, user1.UserID, user2.UserID)
+	require.Equal(t, user1.UserLogin, user2.UserLogin)
+	require.Equal(t, user1.UserName, user2.UserName)
+	require.Equal(t, user1.ProfileImageUrl, user2.ProfileImageUrl)
+}

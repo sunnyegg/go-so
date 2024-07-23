@@ -16,3 +16,13 @@ func TestEncrypt(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, plainText, decryptedText)
 }
+
+func TestErrorEncrypt(t *testing.T) {
+	_, err := Encrypt("", "")
+	require.Error(t, err)
+}
+
+func TestErrorDecrypt(t *testing.T) {
+	_, err := Decrypt("", "")
+	require.Error(t, err)
+}

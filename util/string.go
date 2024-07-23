@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// parse string to int64
+// parse number in string to int64
 func ParseStringToInt64(s string) (int64, error) {
 	if s == "" {
 		return 0, errors.New("empty string")
@@ -17,7 +17,7 @@ func ParseStringToInt64(s string) (int64, error) {
 	return i, nil
 }
 
-// parse string to int32
+// parse number in string to int32
 func ParseStringToInt32(s string) (int32, error) {
 	if s == "" {
 		return 0, errors.New("empty string")
