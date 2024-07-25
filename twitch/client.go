@@ -30,7 +30,7 @@ func (client *Client) GetOAuthToken(code string) (*OAuthToken, error) {
 	params.Set("client_secret", client.clientSecret)
 	params.Set("code", code)
 	params.Set("grant_type", "authorization_code")
-	params.Set("redirect_uri", "https://wild-grapes-flow.loca.lt/auth/login")
+	params.Set("redirect_uri", client.redirectURI+"/auth/login")
 
 	req, err := http.NewRequest("POST", client.oauthURL+"/token", bytes.NewBufferString(params.Encode()))
 	if err != nil {
@@ -175,4 +175,11 @@ func (client *Client) GetUserInfo(accessToken, userID, username string) (*UserIn
 	}
 
 	return &userInfo.Data[0], nil
+}
+
+func (client *Client) ConnectTwitchChat(username, accessToken string) {
+	twitchClient := NewChatClient(username, accessToken)
+	twitchClient.Connect()
+	twitchClient.Join(username, "cloeeeyy")
+	twitchClient.Join(username, "sunnyegg21")
 }

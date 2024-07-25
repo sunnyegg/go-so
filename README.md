@@ -1,0 +1,5 @@
+- Create integration with twitch chat api (v)
+- Create api twitch chat (v)
+- Create websocket server (v)
+- Create attendance
+- Logging error

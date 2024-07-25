@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/twitch"
@@ -57,7 +56,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	delete(tempState, req.State)
 
 	// login twitch
-	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
 	token, err := twClient.GetOAuthToken(req.Code)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
@@ -215,10 +214,10 @@ func createLoginUserResponse(ctx *gin.Context, server *Server, user db.User, tok
 }
 
 type refreshUserRequest struct {
-	SessionID    uuid.UUID `json:"session_id" binding:"required"`
-	RefreshToken string    `json:"refresh_token" binding:"required"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
+// TODO: redo masalah ID untuk check session di middleware
 func (server *Server) refreshUser(ctx *gin.Context) {
 	var req refreshUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -233,20 +232,13 @@ func (server *Server) refreshUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
-	if payload.ID != req.SessionID {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid session")))
-		return
-	}
 	if payload.ExpiredAt.Before(time.Now()) {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("expired")))
 		return
 	}
 
 	// check session
-	session, err := server.store.GetSession(ctx, db.GetSessionParams{
-		ID:     util.UUIDToUUID(payload.ID),
-		UserID: payload.UserID,
-	})
+	session, err := server.store.GetSessionByRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid session")))
@@ -283,10 +275,10 @@ type createStateResponse struct {
 }
 
 func (server *Server) createState(ctx *gin.Context) {
-	scope := "user:read:moderated_channels user:write:chat moderator:manage:shoutouts" // TODO: change to get scope from db scope
+	scope := "channel:moderate chat:edit chat:read moderator:manage:shoutouts" // TODO: change to get scope from db scope
 	state := util.RandomString(16)
 	tempState[state] = true
-	redirectURI := "https://wild-grapes-flow.loca.lt/auth/login"
+	redirectURI := server.config.RedirectURI + "/auth/login"
 
 	url := "https://id.twitch.tv/oauth2/authorize?client_id=" + server.config.TwitchClientID + "&redirect_uri=" + redirectURI + "&response_type=code&scope=" + scope + "&state=" + state
 

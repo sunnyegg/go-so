@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/sunnyegg/go-so/api"
+	"github.com/sunnyegg/go-so/channel"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/util"
 )
@@ -30,6 +31,9 @@ func main() {
 	if err != nil {
 		log.Fatal("cannot create server: ", err)
 	}
+
+	// create channels
+	channel.NewChannel(channel.ChannelWebsocket).Create()
 
 	err = server.Start(serverAddress)
 	if err != nil {

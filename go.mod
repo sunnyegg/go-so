@@ -4,9 +4,11 @@ go 1.22.5
 
 require (
 	github.com/aead/chacha20poly1305 v0.0.0-20201124145622-1a5aba2a8b29
+	github.com/gempir/go-twitch-irc/v4 v4.0.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.4.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/o1egl/paseto v1.0.0
 	github.com/robfig/cron v1.2.0

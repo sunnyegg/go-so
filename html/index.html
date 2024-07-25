@@ -1,13 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test</title>
-</head>
-<body>
-  <a href="https://id.twitch.tv/oauth2/authorize?client_id=8eb4120qef29e0ha7o3dvbe1d58jv4&redirect_uri=https://wild-grapes-flow.loca.lt/auth/login&response_type=code&scope=user:read:moderated_channels user:write:chat moderator:manage:shoutouts&state=uizwajcwrrspetyh">
-    Connect with Twitch
-  </a>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Go WebSocket Tutorial</title>
+  </head>
+  <body>
+    <h2>Hello World</h2>
+
+    <script>
+        let socket = new WebSocket("ws://127.0.0.1:9000/ws");
+        console.log("Attempting Connection...");
+
+        socket.onopen = () => {
+            console.log("Successfully Connected");
+            socket.send("Hi From the Client!")
+        };
+        
+        socket.onclose = event => {
+            console.log("Socket Closed Connection: ", event);
+            socket.send("Client Closed!")
+        };
+
+        socket.onerror = error => {
+            console.log("Socket Error: ", error);
+        };
+
+        socket.onmessage = event => {
+            console.log("Message Recieved: ", event.data);
+        };
+
+    </script>
+  </body>
 </html>
