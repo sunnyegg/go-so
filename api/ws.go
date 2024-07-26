@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -55,12 +56,20 @@ func (server *Server) ws(ctx *gin.Context) {
 			streamID := msg["stream_id"]
 			username := msg["username"]
 			parsedStreamID, _ := util.ParseStringToInt64(streamID)
-			server.store.CreateAttendanceMember(ctx, db.CreateAttendanceMemberParams{
+			_, err = server.store.CreateAttendanceMember(ctx, db.CreateAttendanceMemberParams{
 				StreamID:  parsedStreamID,
 				Username:  username,
 				IsShouted: false,
 				PresentAt: util.StringToTimestamp(time.Now().Format(time.RFC3339)),
 			})
+			if err != nil {
+				if strings.Contains(err.Error(), "duplicate key") {
+					fmt.Println("member exists")
+					return
+				}
+
+				fmt.Println(err)
+			}
 		}
 	}()
 

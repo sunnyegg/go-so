@@ -19,6 +19,7 @@ type Querier interface {
 	DeleteUserConfig(ctx context.Context, id int64) error
 	GetSession(ctx context.Context, arg GetSessionParams) (Session, error)
 	GetSessionByRefreshToken(ctx context.Context, refreshToken string) (Session, error)
+	GetSessionByUserID(ctx context.Context, userID string) (GetSessionByUserIDRow, error)
 	GetStream(ctx context.Context, arg GetStreamParams) (GetStreamRow, error)
 	GetStreamAttendanceMembers(ctx context.Context, arg GetStreamAttendanceMembersParams) ([]GetStreamAttendanceMembersRow, error)
 	GetUser(ctx context.Context, id int64) (GetUserRow, error)

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -66,6 +67,7 @@ func (server *Server) getTwitchUser(ctx *gin.Context) {
 }
 
 type connectChatRequest struct {
+	StreamID string `json:"stream_id" binding:"required"`
 	Username string `json:"username" binding:"required"`
 	Channel  string `json:"channel" binding:"required"`
 }
@@ -111,7 +113,110 @@ func (server *Server) connectChat(ctx *gin.Context) {
 
 	// connect to chat
 	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
-	twClient.ConnectTwitchChat(req.Username, payload.AccessToken)
+	twClient.ConnectTwitchChat(req.StreamID, req.Username, payload.AccessToken)
+
+	ctx.JSON(http.StatusOK, nil)
+}
+
+type eventsubRequest struct {
+	Challenge    string `json:"challenge"`
+	Subscription struct {
+		Type      string `json:"type"`
+		Condition struct {
+			BroadcasterUserID string `json:"broadcaster_user_id"`
+		}
+	} `json:"subscription"`
+	Event struct {
+		UserLogin string `json:"user_login"`
+		Reward    struct {
+			Title string `json:"title"`
+		} `json:"reward"`
+	} `json:"event"`
+}
+
+const (
+	EventsubMessageIDHeaderKey                = "Twitch-Eventsub-Message-Id"
+	EventsubMessageTimestampHeaderKey         = "Twitch-Eventsub-Message-Timestamp"
+	EventsubMessageSignatureHeaderKey         = "Twitch-Eventsub-Message-Signature"
+	EventsubMessageTypeHeaderKey              = "Twitch-Eventsub-Message-Type"
+	EventsubSubscriptionTypeChannelRedemption = "channel.channel_points_custom_reward_redemption.add"
+	EventsubSubscriptionTypeStreamOnline      = "stream.online"
+	EventsubSubscriptionTypeFollow            = "channel.follow"
+)
+
+func (server *Server) handleEventsub(ctx *gin.Context) {
+	var req eventsubRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	if ctx.Request.Header.Get(EventsubMessageTypeHeaderKey) != "notification" {
+		if ctx.Request.Header.Get(EventsubMessageTypeHeaderKey) == "webhook_callback_verification" {
+			ctx.Request.Header.Set("Content-Type", "text/plain")
+			ctx.String(http.StatusOK, req.Challenge)
+			return
+		}
+
+		ctx.JSON(http.StatusBadRequest, errorResponse(errors.New("invalid message type")))
+		return
+	}
+
+	// if someone goes live
+	// create stream
+	if req.Subscription.Type == EventsubSubscriptionTypeStreamOnline {
+		// get session by userid
+		session, err := server.store.GetSessionByUserID(ctx, req.Subscription.Condition.BroadcasterUserID)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				ctx.JSON(http.StatusBadRequest, errorResponse(err))
+				return
+			}
+
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+
+		// decrypt token
+		tokenBytes, err := util.Decrypt(session.EncryptedTwitchToken, server.config.TokenSymmetricKey)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+		token := []byte(tokenBytes)
+		payload := twitch.OAuthToken{}
+		err = json.Unmarshal(token, &payload)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+
+		// get user stream info
+		twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
+		streamInfo, err := twClient.GetStreamInfo(payload.AccessToken, req.Subscription.Condition.BroadcasterUserID)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+
+		// create stream
+		arg := db.CreateStreamParams{
+			UserID:    session.UserID,
+			Title:     streamInfo.Title,
+			GameName:  streamInfo.GameName,
+			StartedAt: util.StringToTimestamp(streamInfo.StartedAt),
+			CreatedBy: session.UserID,
+		}
+
+		stream, err := server.store.CreateStream(ctx, arg)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+
+		// connect chat
+		twClient.ConnectTwitchChat(util.ParseIntToString(int(stream.ID)), req.Event.UserLogin, payload.AccessToken)
+	}
 
 	ctx.JSON(http.StatusOK, nil)
 }

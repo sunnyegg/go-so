@@ -41,3 +41,14 @@ type ValidateOAuthToken struct {
 	UserID    string   `json:"user_id"`
 	ExpiresIn int      `json:"expires_in"`
 }
+
+type StreamInfo struct {
+	Data []StreamInfoData `json:"data"`
+}
+
+type StreamInfoData struct {
+	ID        string `json:"id"`
+	GameName  string `json:"game_name"`
+	Title     string `json:"title"`
+	StartedAt string `json:"started_at"`
+}

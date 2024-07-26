@@ -24,6 +24,12 @@ SELECT * FROM sessions
 WHERE refresh_token = $1 AND is_blocked = false
 LIMIT 1;
 
+-- name: GetSessionByUserID :one
+SELECT * FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE u.user_id = $1 AND is_blocked = false
+LIMIT 1;
+
 -- name: ListSession :many
 SELECT * FROM sessions
 ORDER BY created_at ASC;

@@ -182,6 +182,21 @@ func (mr *MockStoreMockRecorder) GetSessionByRefreshToken(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionByRefreshToken", reflect.TypeOf((*MockStore)(nil).GetSessionByRefreshToken), arg0, arg1)
 }
 
+// GetSessionByUserID mocks base method.
+func (m *MockStore) GetSessionByUserID(arg0 context.Context, arg1 string) (db.GetSessionByUserIDRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSessionByUserID", arg0, arg1)
+	ret0, _ := ret[0].(db.GetSessionByUserIDRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSessionByUserID indicates an expected call of GetSessionByUserID.
+func (mr *MockStoreMockRecorder) GetSessionByUserID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionByUserID", reflect.TypeOf((*MockStore)(nil).GetSessionByUserID), arg0, arg1)
+}
+
 // GetStream mocks base method.
 func (m *MockStore) GetStream(arg0 context.Context, arg1 db.GetStreamParams) (db.GetStreamRow, error) {
 	m.ctrl.T.Helper()

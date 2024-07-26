@@ -177,9 +177,47 @@ func (client *Client) GetUserInfo(accessToken, userID, username string) (*UserIn
 	return &userInfo.Data[0], nil
 }
 
-func (client *Client) ConnectTwitchChat(username, accessToken string) {
+func (client *Client) ConnectTwitchChat(streamid, username, accessToken string) {
 	twitchClient := NewChatClient(username, accessToken)
-	twitchClient.Connect()
-	twitchClient.Join(username, "cloeeeyy")
-	twitchClient.Join(username, "sunnyegg21")
+	twitchClient.Connect(streamid)
+	twitchClient.Join(username, username)
+}
+
+func (client *Client) GetStreamInfo(accessToken, userID string) (*StreamInfoData, error) {
+	var httpClient = &http.Client{}
+	url := client.helixURL + "/streams"
+	if userID != "" {
+		params := "?user_id=" + userID
+		url += params
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Client-Id", client.clientID)
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, errors.New("failed to get stream info: " + string(resBody))
+	}
+
+	var streamInfo = StreamInfo{}
+	err = json.Unmarshal(resBody, &streamInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &streamInfo.Data[0], nil
 }

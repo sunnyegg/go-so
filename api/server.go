@@ -63,6 +63,7 @@ func (server *Server) registerRoutes() {
 	// twitch
 	authRoutes.GET("/twitch/user", server.getTwitchUser)
 	authRoutes.POST("/twitch/chat/connect", server.connectChat)
+	router.POST("/twitch/eventsub", server.handleEventsub)
 
 	// ws
 	router.GET("/ws", server.ws)

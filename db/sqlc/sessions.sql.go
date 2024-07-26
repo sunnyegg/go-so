@@ -116,6 +116,56 @@ func (q *Queries) GetSessionByRefreshToken(ctx context.Context, refreshToken str
 	return i, err
 }
 
+const getSessionByUserID = `-- name: GetSessionByUserID :one
+SELECT s.id, s.user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, s.created_at, encrypted_twitch_token, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, updated_at FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE u.user_id = $1 AND is_blocked = false
+LIMIT 1
+`
+
+type GetSessionByUserIDRow struct {
+	ID                   pgtype.UUID        `json:"id"`
+	UserID               int64              `json:"user_id"`
+	RefreshToken         string             `json:"refresh_token"`
+	UserAgent            string             `json:"user_agent"`
+	ClientIp             string             `json:"client_ip"`
+	IsBlocked            bool               `json:"is_blocked"`
+	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	EncryptedTwitchToken string             `json:"encrypted_twitch_token"`
+	ID_2                 int64              `json:"id_2"`
+	UserID_2             string             `json:"user_id_2"`
+	UserLogin            string             `json:"user_login"`
+	UserName             string             `json:"user_name"`
+	ProfileImageUrl      string             `json:"profile_image_url"`
+	CreatedAt_2          pgtype.Timestamptz `json:"created_at_2"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetSessionByUserID(ctx context.Context, userID string) (GetSessionByUserIDRow, error) {
+	row := q.db.QueryRow(ctx, getSessionByUserID, userID)
+	var i GetSessionByUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.RefreshToken,
+		&i.UserAgent,
+		&i.ClientIp,
+		&i.IsBlocked,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.EncryptedTwitchToken,
+		&i.ID_2,
+		&i.UserID_2,
+		&i.UserLogin,
+		&i.UserName,
+		&i.ProfileImageUrl,
+		&i.CreatedAt_2,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listSession = `-- name: ListSession :many
 SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token FROM sessions
 ORDER BY created_at ASC

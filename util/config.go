@@ -18,6 +18,7 @@ type Config struct {
 	TwitchClientSecret   string        `mapstructure:"TWITCH_SECRET_ID"`
 	FeAddress            string        `mapstructure:"FE_ADDRESS"`
 	RedirectURI          string        `mapstructure:"REDIRECT_URI"`
+	TwitchEventsubSecret string        `mapstructure:"TWITCH_EVENTSUB_SECRET"`
 }
 
 // LoadConfig loads the configuration from file or environment variables

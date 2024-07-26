@@ -275,7 +275,7 @@ type createStateResponse struct {
 }
 
 func (server *Server) createState(ctx *gin.Context) {
-	scope := "channel:moderate chat:edit chat:read moderator:manage:shoutouts" // TODO: change to get scope from db scope
+	scope := "channel:moderate chat:edit chat:read moderator:manage:shoutouts channel:read:redemptions" // TODO: change to get scope from db scope
 	state := util.RandomString(16)
 	tempState[state] = true
 	redirectURI := server.config.RedirectURI + "/auth/login"

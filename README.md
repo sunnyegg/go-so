@@ -1,5 +1,10 @@
 - Create integration with twitch chat api (v)
 - Create api twitch chat (v)
 - Create websocket server (v)
-- Create attendance
+- Create attendance (v)
+- Integrate with eventsub (v)
+- Validate eventsub (?)
+- Register user to eventsub ()
+- Send chat message to twitch chat ()
+- Send shoutout to twitch chat () -> /shoutout
 - Logging error

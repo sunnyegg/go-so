@@ -14,6 +14,7 @@ type ChatClient struct {
 }
 
 var ConnectedClients = make(map[string]*twitchClient.Client)
+var AlreadyPresent = make(map[string]bool)
 
 func NewChatClient(username, token string) *ChatClient {
 	if _, ok := ConnectedClients[username]; !ok {
@@ -27,15 +28,20 @@ func NewChatClient(username, token string) *ChatClient {
 	}
 }
 
-func (client *ChatClient) Connect() {
+func (client *ChatClient) Connect(streamid string) {
 	client.ircClient.OnPrivateMessage(func(message twitchClient.PrivateMessage) {
 		fmt.Printf("[%s] %s: %s\n", message.Channel, message.User.DisplayName, message.Message)
 
-		ch := channel.NewChannel(channel.ChannelWebsocket)
-		ch.Send(map[string]string{
-			"stream_id": "1",
-			"username":  message.User.Name,
-		})
+		user := streamid + message.User.Name
+
+		if _, ok := AlreadyPresent[user]; !ok {
+			AlreadyPresent[user] = true
+			ch := channel.NewChannel(channel.ChannelWebsocket)
+			ch.Send(map[string]string{
+				"stream_id": streamid,
+				"username":  message.User.Name,
+			})
+		}
 	})
 
 	go func() {
