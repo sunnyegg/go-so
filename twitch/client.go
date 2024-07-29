@@ -221,3 +221,87 @@ func (client *Client) GetStreamInfo(accessToken, userID string) (*StreamInfoData
 
 	return &streamInfo.Data[0], nil
 }
+
+func (client *Client) GetAppAccessToken(clientID, clientSecret string) (*AppAccessToken, error) {
+	var httpClient = &http.Client{}
+
+	params := url.Values{}
+	params.Set("client_id", clientID)
+	params.Set("client_secret", clientSecret)
+	params.Set("grant_type", "client_credentials")
+
+	req, err := http.NewRequest("POST", client.oauthURL+"/token", bytes.NewBufferString(params.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, errors.New("failed to get app access token: " + string(resBody))
+	}
+
+	// convert bytes to struct
+	var appAccessToken = AppAccessToken{}
+	err = json.Unmarshal(resBody, &appAccessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &appAccessToken, nil
+}
+
+func (client *Client) RegisterEventsub(accessToken string, subscription EventsubSubscription) error {
+	var httpClient = &http.Client{}
+	url := client.helixURL + "/eventsub/subscriptions"
+
+	subscriptionBytes, err := json.Marshal(subscription)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(subscriptionBytes))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Client-Id", client.clientID)
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	// skip if already registered
+	if res.StatusCode == 409 {
+		return nil
+	}
+
+	// success
+	if res.StatusCode == 202 {
+		return nil
+	}
+
+	if res.StatusCode != 200 {
+		return errors.New("failed to register eventsub: " + string(resBody))
+	}
+
+	return nil
+}

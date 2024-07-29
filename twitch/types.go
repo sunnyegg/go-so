@@ -20,6 +20,12 @@ type OAuthToken struct {
 	TokenType    string   `json:"token_type"`
 }
 
+type AppAccessToken struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	TokenType   string `json:"token_type"`
+}
+
 type UserInfo struct {
 	Data []UserInfoData `json:"data"`
 }
@@ -51,4 +57,21 @@ type StreamInfoData struct {
 	GameName  string `json:"game_name"`
 	Title     string `json:"title"`
 	StartedAt string `json:"started_at"`
+}
+
+type EventsubSubscription struct {
+	Type      string                        `json:"type"`
+	Version   string                        `json:"version"`
+	Condition EventsubSubscriptionCondition `json:"condition"`
+	Transport EventsubSubscriptionTransport `json:"transport"`
+}
+
+type EventsubSubscriptionCondition struct {
+	BroadcasterUserID string `json:"broadcaster_user_id"`
+}
+
+type EventsubSubscriptionTransport struct {
+	Method   string `json:"method"`
+	Callback string `json:"callback"`
+	Secret   string `json:"secret"`
 }

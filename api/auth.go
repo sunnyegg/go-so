@@ -92,6 +92,36 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
+	// register eventsub
+	appAccessToken, err := twClient.GetAppAccessToken(server.config.TwitchClientID, server.config.TwitchClientSecret)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	eventsubPayload := twitch.EventsubSubscription{
+		Type:      "stream.online",
+		Version:   "1",
+		Condition: twitch.EventsubSubscriptionCondition{BroadcasterUserID: userInfo.ID},
+		Transport: twitch.EventsubSubscriptionTransport{
+			Method:   "webhook",
+			Callback: server.config.RedirectURI + "/twitch/eventsub",
+			Secret:   server.config.TwitchClientSecret,
+		},
+	}
+	err = twClient.RegisterEventsub(appAccessToken.AccessToken, eventsubPayload)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	eventsubPayload.Type = "channel.channel_points_custom_reward_redemption.add"
+	err = twClient.RegisterEventsub(appAccessToken.AccessToken, eventsubPayload)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, rsp)
 }
 

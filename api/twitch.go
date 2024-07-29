@@ -151,6 +151,7 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 		return
 	}
 
+	// TODO: validate signature
 	if ctx.Request.Header.Get(EventsubMessageTypeHeaderKey) != "notification" {
 		if ctx.Request.Header.Get(EventsubMessageTypeHeaderKey) == "webhook_callback_verification" {
 			ctx.Request.Header.Set("Content-Type", "text/plain")

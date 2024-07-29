@@ -4,7 +4,7 @@
 - Create attendance (v)
 - Integrate with eventsub (v)
 - Validate eventsub (?)
-- Register user to eventsub ()
+- Register user to eventsub (v)
 - Send chat message to twitch chat ()
 - Send shoutout to twitch chat () -> /shoutout
 - Logging error
