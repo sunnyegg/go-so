@@ -5,6 +5,9 @@
 - Integrate with eventsub (v)
 - Validate eventsub (?)
 - Register user to eventsub (v)
-- Send chat message to twitch chat ()
+- Send chat message to twitch chat (v)
+- Apply blacklist to twitch chat (v)
+- Apply delay to twitch chat (v)
+- Apply auto SO to twitch chat (v)
 - Send shoutout to twitch chat () -> /shoutout
 - Logging error

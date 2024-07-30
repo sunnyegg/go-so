@@ -2,6 +2,8 @@ package twitch
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	twitchClient "github.com/gempir/go-twitch-irc/v4"
 	"github.com/sunnyegg/go-so/channel"
@@ -28,19 +30,39 @@ func NewChatClient(username, token string) *ChatClient {
 	}
 }
 
-func (client *ChatClient) Connect(streamid string) {
+func (client *ChatClient) Connect(config ConnectConfig) {
 	client.ircClient.OnPrivateMessage(func(message twitchClient.PrivateMessage) {
 		fmt.Printf("[%s] %s: %s\n", message.Channel, message.User.DisplayName, message.Message)
 
-		user := streamid + message.User.Name
+		// skip blacklist
+		if len(config.Blacklist) > 0 {
+			for _, blacklist := range config.Blacklist {
+				if strings.EqualFold(blacklist, message.User.Name) {
+					return
+				}
+			}
+		}
 
-		if _, ok := AlreadyPresent[user]; !ok {
-			AlreadyPresent[user] = true
-			ch := channel.NewChannel(channel.ChannelWebsocket)
-			ch.Send(map[string]string{
-				"stream_id": streamid,
-				"username":  message.User.Name,
-			})
+		user := config.StreamID + message.User.Name
+
+		if _, ok := AlreadyPresent[user]; ok {
+			return
+		}
+
+		AlreadyPresent[user] = true
+		ch := channel.NewChannel(channel.ChannelWebsocket)
+		ch.Send(map[string]string{
+			"stream_id": config.StreamID,
+			"username":  message.User.Name,
+		})
+
+		if config.IsAutoSO {
+			go func() {
+				time.Sleep(time.Second * time.Duration(config.Delay))
+
+				// !so message to twitch chat
+				client.ircClient.Say(message.Channel, "!so "+message.User.Name)
+			}()
 		}
 	})
 

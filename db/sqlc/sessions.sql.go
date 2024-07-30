@@ -120,6 +120,7 @@ const getSessionByUserID = `-- name: GetSessionByUserID :one
 SELECT s.id, s.user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, s.created_at, encrypted_twitch_token, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, updated_at FROM sessions s
 JOIN users u ON s.user_id = u.id
 WHERE u.user_id = $1 AND is_blocked = false
+ORDER BY s.created_at DESC
 LIMIT 1
 `
 
@@ -204,7 +205,8 @@ func (q *Queries) ListSession(ctx context.Context) ([]Session, error) {
 const updateSession = `-- name: UpdateSession :exec
 UPDATE sessions
 SET
-  encrypted_twitch_token = $2
+  encrypted_twitch_token = $2,
+  updated_at = now()
 WHERE id = $1
 RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token
 `

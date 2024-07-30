@@ -75,3 +75,10 @@ type EventsubSubscriptionTransport struct {
 	Callback string `json:"callback"`
 	Secret   string `json:"secret"`
 }
+
+type ConnectConfig struct {
+	StreamID  string   `json:"stream_id"`
+	Delay     int      `json:"delay"`
+	IsAutoSO  bool     `json:"is_auto_so"`
+	Blacklist []string `json:"blacklist"`
+}

@@ -177,9 +177,9 @@ func (client *Client) GetUserInfo(accessToken, userID, username string) (*UserIn
 	return &userInfo.Data[0], nil
 }
 
-func (client *Client) ConnectTwitchChat(streamid, username, accessToken string) {
+func (client *Client) ConnectTwitchChat(config ConnectConfig, username, accessToken string) {
 	twitchClient := NewChatClient(username, accessToken)
-	twitchClient.Connect(streamid)
+	twitchClient.Connect(config)
 	twitchClient.Join(username, username)
 }
 
@@ -217,6 +217,9 @@ func (client *Client) GetStreamInfo(accessToken, userID string) (*StreamInfoData
 	err = json.Unmarshal(resBody, &streamInfo)
 	if err != nil {
 		return nil, err
+	}
+	if len(streamInfo.Data) == 0 {
+		return nil, errors.New("stream not found")
 	}
 
 	return &streamInfo.Data[0], nil

@@ -112,8 +112,14 @@ func (server *Server) connectChat(ctx *gin.Context) {
 	}
 
 	// connect to chat
+	configChat := twitch.ConnectConfig{
+		StreamID: req.StreamID,
+		IsAutoSO: true,
+		Delay:    5,
+	}
+
 	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
-	twClient.ConnectTwitchChat(req.StreamID, req.Username, payload.AccessToken)
+	twClient.ConnectTwitchChat(configChat, req.Username, payload.AccessToken)
 
 	ctx.JSON(http.StatusOK, nil)
 }
@@ -196,6 +202,11 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 		twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
 		streamInfo, err := twClient.GetStreamInfo(payload.AccessToken, req.Subscription.Condition.BroadcasterUserID)
 		if err != nil {
+			// if stream not found, not doing anything
+			if err.Error() == "stream not found" {
+				ctx.JSON(http.StatusOK, nil)
+				return
+			}
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 			return
 		}
@@ -216,7 +227,16 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 		}
 
 		// connect chat
-		twClient.ConnectTwitchChat(util.ParseIntToString(int(stream.ID)), req.Event.UserLogin, payload.AccessToken)
+		configChat := twitch.ConnectConfig{
+			StreamID: util.ParseIntToString(int(stream.ID)),
+			IsAutoSO: true,
+			Delay:    5,
+			Blacklist: []string{
+				"NIGHTBOT",
+			},
+		}
+
+		twClient.ConnectTwitchChat(configChat, req.Event.UserLogin, payload.AccessToken)
 	}
 
 	ctx.JSON(http.StatusOK, nil)

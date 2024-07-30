@@ -28,6 +28,7 @@ LIMIT 1;
 SELECT * FROM sessions s
 JOIN users u ON s.user_id = u.id
 WHERE u.user_id = $1 AND is_blocked = false
+ORDER BY s.created_at DESC
 LIMIT 1;
 
 -- name: ListSession :many
@@ -37,6 +38,7 @@ ORDER BY created_at ASC;
 -- name: UpdateSession :exec
 UPDATE sessions
 SET
-  encrypted_twitch_token = $2
+  encrypted_twitch_token = $2,
+  updated_at = now()
 WHERE id = $1
 RETURNING *;
