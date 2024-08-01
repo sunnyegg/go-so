@@ -25,7 +25,7 @@ INSERT INTO sessions
 )
 VALUES
 ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token
+RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token, updated_at
 `
 
 type CreateSessionParams struct {
@@ -61,13 +61,15 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.EncryptedTwitchToken,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token FROM sessions
-WHERE id = $1 AND user_id = $2
+SELECT s.id, s.user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, s.created_at, encrypted_twitch_token, s.updated_at, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, u.updated_at FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.id = $1 AND s.user_id = $2
 LIMIT 1
 `
 
@@ -76,9 +78,29 @@ type GetSessionParams struct {
 	UserID int64       `json:"user_id"`
 }
 
-func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (Session, error) {
+type GetSessionRow struct {
+	ID                   pgtype.UUID        `json:"id"`
+	UserID               int64              `json:"user_id"`
+	RefreshToken         string             `json:"refresh_token"`
+	UserAgent            string             `json:"user_agent"`
+	ClientIp             string             `json:"client_ip"`
+	IsBlocked            bool               `json:"is_blocked"`
+	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	EncryptedTwitchToken string             `json:"encrypted_twitch_token"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	ID_2                 int64              `json:"id_2"`
+	UserID_2             string             `json:"user_id_2"`
+	UserLogin            string             `json:"user_login"`
+	UserName             string             `json:"user_name"`
+	ProfileImageUrl      string             `json:"profile_image_url"`
+	CreatedAt_2          pgtype.Timestamptz `json:"created_at_2"`
+	UpdatedAt_2          pgtype.Timestamptz `json:"updated_at_2"`
+}
+
+func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSessionRow, error) {
 	row := q.db.QueryRow(ctx, getSession, arg.ID, arg.UserID)
-	var i Session
+	var i GetSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -89,12 +111,20 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (Session
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.EncryptedTwitchToken,
+		&i.UpdatedAt,
+		&i.ID_2,
+		&i.UserID_2,
+		&i.UserLogin,
+		&i.UserName,
+		&i.ProfileImageUrl,
+		&i.CreatedAt_2,
+		&i.UpdatedAt_2,
 	)
 	return i, err
 }
 
 const getSessionByRefreshToken = `-- name: GetSessionByRefreshToken :one
-SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token FROM sessions
+SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token, updated_at FROM sessions
 WHERE refresh_token = $1 AND is_blocked = false
 LIMIT 1
 `
@@ -112,12 +142,13 @@ func (q *Queries) GetSessionByRefreshToken(ctx context.Context, refreshToken str
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.EncryptedTwitchToken,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getSessionByUserID = `-- name: GetSessionByUserID :one
-SELECT s.id, s.user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, s.created_at, encrypted_twitch_token, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, updated_at FROM sessions s
+SELECT s.id, s.user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, s.created_at, encrypted_twitch_token, s.updated_at, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, u.updated_at FROM sessions s
 JOIN users u ON s.user_id = u.id
 WHERE u.user_id = $1 AND is_blocked = false
 ORDER BY s.created_at DESC
@@ -134,13 +165,14 @@ type GetSessionByUserIDRow struct {
 	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	EncryptedTwitchToken string             `json:"encrypted_twitch_token"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 	ID_2                 int64              `json:"id_2"`
 	UserID_2             string             `json:"user_id_2"`
 	UserLogin            string             `json:"user_login"`
 	UserName             string             `json:"user_name"`
 	ProfileImageUrl      string             `json:"profile_image_url"`
 	CreatedAt_2          pgtype.Timestamptz `json:"created_at_2"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	UpdatedAt_2          pgtype.Timestamptz `json:"updated_at_2"`
 }
 
 func (q *Queries) GetSessionByUserID(ctx context.Context, userID string) (GetSessionByUserIDRow, error) {
@@ -156,19 +188,20 @@ func (q *Queries) GetSessionByUserID(ctx context.Context, userID string) (GetSes
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.EncryptedTwitchToken,
+		&i.UpdatedAt,
 		&i.ID_2,
 		&i.UserID_2,
 		&i.UserLogin,
 		&i.UserName,
 		&i.ProfileImageUrl,
 		&i.CreatedAt_2,
-		&i.UpdatedAt,
+		&i.UpdatedAt_2,
 	)
 	return i, err
 }
 
 const listSession = `-- name: ListSession :many
-SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token FROM sessions
+SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token, updated_at FROM sessions
 ORDER BY created_at ASC
 `
 
@@ -191,6 +224,7 @@ func (q *Queries) ListSession(ctx context.Context) ([]Session, error) {
 			&i.ExpiresAt,
 			&i.CreatedAt,
 			&i.EncryptedTwitchToken,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -208,7 +242,7 @@ SET
   encrypted_twitch_token = $2,
   updated_at = now()
 WHERE id = $1
-RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token
+RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token, updated_at
 `
 
 type UpdateSessionParams struct {

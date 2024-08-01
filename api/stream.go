@@ -1,41 +1,69 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/token"
+	"github.com/sunnyegg/go-so/twitch"
 	"github.com/sunnyegg/go-so/util"
 )
 
-type createStreamRequest struct {
-	Title     string `json:"title" binding:"required"`
-	GameName  string `json:"game_name" binding:"required"`
-	StartedAt string `json:"started_at" binding:"required"`
-}
-
 type createStreamResponse struct {
+	ID        int64  `json:"id" binding:"required"`
 	Title     string `json:"title" binding:"required"`
 	GameName  string `json:"game_name" binding:"required"`
 	StartedAt string `json:"started_at" binding:"required"`
 }
 
 func (server *Server) createStream(ctx *gin.Context) {
-	var req createStreamRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
+	// get session
+	session, err := server.store.GetSession(ctx, db.GetSessionParams{
+		ID:     util.UUIDToUUID(authPayload.SessionID),
+		UserID: authPayload.UserID,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	// decrypt token
+	tokenBytes, err := util.Decrypt(session.EncryptedTwitchToken, server.config.TokenSymmetricKey)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	token := []byte(tokenBytes)
+	payload := twitch.OAuthToken{}
+	err = json.Unmarshal(token, &payload)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// get stream info
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
+	streamInfo, err := twClient.GetStreamInfo(payload.AccessToken, session.UserID_2)
+	if err != nil {
+		if err.Error() == "stream not found" {
+			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
 
 	arg := db.CreateStreamParams{
 		UserID:    authPayload.UserID,
-		Title:     req.Title,
-		GameName:  req.GameName,
-		StartedAt: util.StringToTimestamp(req.StartedAt),
+		Title:     streamInfo.Title,
+		GameName:  streamInfo.GameName,
+		StartedAt: util.StringToTimestamp(streamInfo.StartedAt),
 		CreatedBy: authPayload.UserID,
 	}
 
@@ -46,6 +74,7 @@ func (server *Server) createStream(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, createStreamResponse{
+		ID:        stream.ID,
 		Title:     stream.Title,
 		GameName:  stream.GameName,
 		StartedAt: stream.StartedAt.Time.String(),

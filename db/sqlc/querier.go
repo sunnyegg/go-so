@@ -17,14 +17,14 @@ type Querier interface {
 	DeleteStream(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteUserConfig(ctx context.Context, id int64) error
-	GetSession(ctx context.Context, arg GetSessionParams) (Session, error)
+	GetSession(ctx context.Context, arg GetSessionParams) (GetSessionRow, error)
 	GetSessionByRefreshToken(ctx context.Context, refreshToken string) (Session, error)
 	GetSessionByUserID(ctx context.Context, userID string) (GetSessionByUserIDRow, error)
 	GetStream(ctx context.Context, arg GetStreamParams) (GetStreamRow, error)
 	GetStreamAttendanceMembers(ctx context.Context, arg GetStreamAttendanceMembersParams) ([]GetStreamAttendanceMembersRow, error)
 	GetUser(ctx context.Context, id int64) (GetUserRow, error)
 	GetUserByUserID(ctx context.Context, userID string) (User, error)
-	GetUserConfig(ctx context.Context, arg GetUserConfigParams) (UserConfig, error)
+	GetUserConfig(ctx context.Context, arg GetUserConfigParams) (GetUserConfigRow, error)
 	ListSession(ctx context.Context) ([]Session, error)
 	ListStreams(ctx context.Context, arg ListStreamsParams) ([]ListStreamsRow, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)

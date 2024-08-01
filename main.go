@@ -34,6 +34,8 @@ func main() {
 
 	// create channels
 	channel.NewChannel(channel.ChannelWebsocket).Create()
+	channel.NewChannel(channel.ChannelBlacklist).Create()
+	channel.NewChannel(channel.ChannelEventsub).Create()
 
 	err = server.Start(serverAddress)
 	if err != nil {

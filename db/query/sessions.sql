@@ -15,8 +15,9 @@ VALUES
 RETURNING *;
 
 -- name: GetSession :one
-SELECT * FROM sessions
-WHERE id = $1 AND user_id = $2
+SELECT * FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.id = $1 AND s.user_id = $2
 LIMIT 1;
 
 -- name: GetSessionByRefreshToken :one

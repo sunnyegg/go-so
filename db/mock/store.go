@@ -153,10 +153,10 @@ func (mr *MockStoreMockRecorder) DeleteUserConfig(arg0, arg1 interface{}) *gomoc
 }
 
 // GetSession mocks base method.
-func (m *MockStore) GetSession(arg0 context.Context, arg1 db.GetSessionParams) (db.Session, error) {
+func (m *MockStore) GetSession(arg0 context.Context, arg1 db.GetSessionParams) (db.GetSessionRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSession", arg0, arg1)
-	ret0, _ := ret[0].(db.Session)
+	ret0, _ := ret[0].(db.GetSessionRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -258,10 +258,10 @@ func (mr *MockStoreMockRecorder) GetUserByUserID(arg0, arg1 interface{}) *gomock
 }
 
 // GetUserConfig mocks base method.
-func (m *MockStore) GetUserConfig(arg0 context.Context, arg1 db.GetUserConfigParams) (db.UserConfig, error) {
+func (m *MockStore) GetUserConfig(arg0 context.Context, arg1 db.GetUserConfigParams) (db.GetUserConfigRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserConfig", arg0, arg1)
-	ret0, _ := ret[0].(db.UserConfig)
+	ret0, _ := ret[0].(db.GetUserConfigRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

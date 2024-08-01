@@ -75,6 +75,7 @@ type Session struct {
 	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	EncryptedTwitchToken string             `json:"encrypted_twitch_token"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Stream struct {

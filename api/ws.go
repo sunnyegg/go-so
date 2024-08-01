@@ -14,6 +14,11 @@ import (
 	"github.com/sunnyegg/go-so/util"
 )
 
+type WsMessage struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
 func (server *Server) ws(ctx *gin.Context) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -37,24 +42,16 @@ func (server *Server) ws(ctx *gin.Context) {
 	}
 
 	// connect to channel
-	ch := channel.NewChannel(channel.ChannelWebsocket)
+	chWs := channel.NewChannel(channel.ChannelWebsocket)
+	chEs := channel.NewChannel(channel.ChannelEventsub)
 
 	go func() {
 		for {
-			msg := <-ch.Listen()
-			// map[string]string to []byte
-			msgBytes, err := json.Marshal(msg)
-			if err != nil {
-				return
-			}
-			err = ws.WriteMessage(websocket.TextMessage, msgBytes)
-			if err != nil {
-				return
-			}
+			msgWs := <-chWs.Listen()
 
 			// attendance
-			streamID := msg["stream_id"]
-			username := msg["username"]
+			streamID := msgWs["stream_id"]
+			username := msgWs["username"]
 			parsedStreamID, _ := util.ParseStringToInt64(streamID)
 			_, err = server.store.CreateAttendanceMember(ctx, db.CreateAttendanceMemberParams{
 				StreamID:  parsedStreamID,
@@ -69,6 +66,42 @@ func (server *Server) ws(ctx *gin.Context) {
 				}
 
 				fmt.Println(err)
+			}
+
+			// map[string]string to []byte
+			msgBytes, err := json.Marshal(msgWs)
+			if err != nil {
+				return
+			}
+
+			msgOutput := WsMessage{
+				Type: "attendance",
+				Data: string(msgBytes),
+			}
+
+			msgOutputBytes, err := json.Marshal(msgOutput)
+			if err != nil {
+				return
+			}
+
+			err = ws.WriteMessage(websocket.TextMessage, msgOutputBytes)
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			msgEs := <-chEs.Listen()
+
+			msgBytes, err := json.Marshal(msgEs)
+			if err != nil {
+				return
+			}
+			err = ws.WriteMessage(websocket.TextMessage, msgBytes)
+			if err != nil {
+				return
 			}
 		}
 	}()

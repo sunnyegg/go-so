@@ -31,14 +31,28 @@ func NewChatClient(username, token string) *ChatClient {
 }
 
 func (client *ChatClient) Connect(config ConnectConfig) {
+	ch := channel.NewChannel(channel.ChannelBlacklist)
+	var msg map[string]string
+
+	go func() {
+		for {
+			msg = <-ch.Listen()
+			fmt.Println(msg)
+		}
+	}()
+
 	client.ircClient.OnPrivateMessage(func(message twitchClient.PrivateMessage) {
 		fmt.Printf("[%s] %s: %s\n", message.Channel, message.User.DisplayName, message.Message)
 
 		// skip blacklist
-		if len(config.Blacklist) > 0 {
-			for _, blacklist := range config.Blacklist {
-				if strings.EqualFold(blacklist, message.User.Name) {
-					return
+		if data, ok := msg[message.Channel]; ok {
+			dataBlacklist := strings.Split(data, ",")
+
+			if len(dataBlacklist) > 0 {
+				for _, blacklist := range dataBlacklist {
+					if strings.EqualFold(blacklist, message.User.Name) {
+						return
+					}
 				}
 			}
 		}
@@ -51,17 +65,20 @@ func (client *ChatClient) Connect(config ConnectConfig) {
 
 		AlreadyPresent[user] = true
 		ch := channel.NewChannel(channel.ChannelWebsocket)
-		ch.Send(map[string]string{
-			"stream_id": config.StreamID,
-			"username":  message.User.Name,
-		})
+
+		go func() {
+			ch.Send(map[string]string{
+				"stream_id": config.StreamID,
+				"username":  message.User.Name,
+			})
+		}()
 
 		if config.IsAutoSO {
 			go func() {
 				time.Sleep(time.Second * time.Duration(config.Delay))
 
 				// !so message to twitch chat
-				client.ircClient.Say(message.Channel, "!so "+message.User.Name)
+				client.ircClient.Say(message.Channel, "!so @"+message.User.Name)
 			}()
 		}
 	})

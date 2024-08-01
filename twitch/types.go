@@ -77,8 +77,7 @@ type EventsubSubscriptionTransport struct {
 }
 
 type ConnectConfig struct {
-	StreamID  string   `json:"stream_id"`
-	Delay     int      `json:"delay"`
-	IsAutoSO  bool     `json:"is_auto_so"`
-	Blacklist []string `json:"blacklist"`
+	StreamID string `json:"stream_id"`
+	Delay    int    `json:"delay"`
+	IsAutoSO bool   `json:"is_auto_so"`
 }

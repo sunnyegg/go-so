@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUserConfig = `-- name: CreateUserConfig :one
@@ -52,8 +54,9 @@ func (q *Queries) DeleteUserConfig(ctx context.Context, id int64) error {
 }
 
 const getUserConfig = `-- name: GetUserConfig :one
-SELECT id, user_id, config_type, value, created_at, updated_at FROM user_configs
-WHERE user_id = $1 AND config_type = $2
+SELECT uc.id, uc.user_id, config_type, value, uc.created_at, uc.updated_at, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, u.updated_at FROM user_configs uc
+JOIN users u ON u.id = uc.user_id
+WHERE uc.user_id = $1 AND uc.config_type = $2
 LIMIT 1
 `
 
@@ -62,9 +65,25 @@ type GetUserConfigParams struct {
 	ConfigType ConfigTypes `json:"config_type"`
 }
 
-func (q *Queries) GetUserConfig(ctx context.Context, arg GetUserConfigParams) (UserConfig, error) {
+type GetUserConfigRow struct {
+	ID              int64              `json:"id"`
+	UserID          int64              `json:"user_id"`
+	ConfigType      ConfigTypes        `json:"config_type"`
+	Value           string             `json:"value"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ID_2            int64              `json:"id_2"`
+	UserID_2        string             `json:"user_id_2"`
+	UserLogin       string             `json:"user_login"`
+	UserName        string             `json:"user_name"`
+	ProfileImageUrl string             `json:"profile_image_url"`
+	CreatedAt_2     pgtype.Timestamptz `json:"created_at_2"`
+	UpdatedAt_2     pgtype.Timestamptz `json:"updated_at_2"`
+}
+
+func (q *Queries) GetUserConfig(ctx context.Context, arg GetUserConfigParams) (GetUserConfigRow, error) {
 	row := q.db.QueryRow(ctx, getUserConfig, arg.UserID, arg.ConfigType)
-	var i UserConfig
+	var i GetUserConfigRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -72,6 +91,13 @@ func (q *Queries) GetUserConfig(ctx context.Context, arg GetUserConfigParams) (U
 		&i.Value,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ID_2,
+		&i.UserID_2,
+		&i.UserLogin,
+		&i.UserName,
+		&i.ProfileImageUrl,
+		&i.CreatedAt_2,
+		&i.UpdatedAt_2,
 	)
 	return i, err
 }

@@ -10,8 +10,9 @@ VALUES
 RETURNING *;
 
 -- name: GetUserConfig :one
-SELECT * FROM user_configs
-WHERE user_id = $1 AND config_type = $2
+SELECT * FROM user_configs uc
+JOIN users u ON u.id = uc.user_id
+WHERE uc.user_id = $1 AND uc.config_type = $2
 LIMIT 1;
 
 -- name: UpdateUserConfig :one

@@ -177,10 +177,10 @@ func (client *Client) GetUserInfo(accessToken, userID, username string) (*UserIn
 	return &userInfo.Data[0], nil
 }
 
-func (client *Client) ConnectTwitchChat(config ConnectConfig, username, accessToken string) {
-	twitchClient := NewChatClient(username, accessToken)
+func (client *Client) ConnectTwitchChat(config ConnectConfig, username, channel, accessToken string) {
+	twitchClient := NewChatClient(channel, accessToken)
 	twitchClient.Connect(config)
-	twitchClient.Join(username, username)
+	twitchClient.Join(username, channel)
 }
 
 func (client *Client) GetStreamInfo(accessToken, userID string) (*StreamInfoData, error) {
