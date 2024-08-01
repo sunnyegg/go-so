@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/twitch"
@@ -195,14 +196,16 @@ func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUser
 }
 
 func createLoginUserResponse(ctx *gin.Context, server *Server, user db.User, token *twitch.OAuthToken) (loginUserResponse, error) {
+	sessionID := uuid.New()
+
 	// create token
-	accessToken, accessTokenPayload, err := server.tokenMaker.MakeToken(user.ID, server.config.AccessTokenDuration)
+	accessToken, _, err := server.tokenMaker.MakeToken(user.ID, sessionID, server.config.AccessTokenDuration)
 	if err != nil {
 		return loginUserResponse{}, err
 	}
 
 	// refresh token
-	refreshToken, refreshTokenPayload, err := server.tokenMaker.MakeToken(user.ID, server.config.RefreshTokenDuration*7)
+	refreshToken, refreshTokenPayload, err := server.tokenMaker.MakeToken(user.ID, sessionID, server.config.RefreshTokenDuration*7)
 	if err != nil {
 		return loginUserResponse{}, err
 	}
@@ -219,7 +222,7 @@ func createLoginUserResponse(ctx *gin.Context, server *Server, user db.User, tok
 
 	// create session
 	_, err = server.store.CreateSession(ctx, db.CreateSessionParams{
-		ID:                   util.UUIDToUUID(accessTokenPayload.ID),
+		ID:                   util.UUIDToUUID(sessionID),
 		UserID:               user.ID,
 		RefreshToken:         refreshToken,
 		UserAgent:            ctx.Request.UserAgent(),
@@ -291,7 +294,7 @@ func (server *Server) refreshUser(ctx *gin.Context) {
 		return
 	}
 
-	accessToken, _, err := server.tokenMaker.MakeToken(payload.UserID, server.config.AccessTokenDuration)
+	accessToken, _, err := server.tokenMaker.MakeToken(payload.UserID, session.ID.Bytes, server.config.AccessTokenDuration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

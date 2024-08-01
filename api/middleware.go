@@ -49,7 +49,7 @@ func authMiddleware(server *Server) gin.HandlerFunc {
 
 		// check if user is blocked
 		session, err := server.store.GetSession(c, db.GetSessionParams{
-			ID:     util.UUIDToUUID(payload.ID),
+			ID:     util.UUIDToUUID(payload.SessionID),
 			UserID: payload.UserID,
 		})
 		if err != nil {

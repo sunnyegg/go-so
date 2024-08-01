@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/sunnyegg/go-so/util"
 )
@@ -16,8 +17,9 @@ func TestMaker(t *testing.T) {
 	duration := 30 * time.Second
 	issuedAt := time.Now()
 	expiredAt := issuedAt.Add(duration)
+	sessionID := uuid.New()
 
-	token, payload, err := maker.MakeToken(userID, duration)
+	token, payload, err := maker.MakeToken(userID, sessionID, duration)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	require.NotEmpty(t, payload)
@@ -38,8 +40,9 @@ func TestExpiredToken(t *testing.T) {
 
 	userID := util.RandomInt(1, 100)
 	duration := -1 * time.Second
+	sessionID := uuid.New()
 
-	token, payload, err := maker.MakeToken(userID, duration)
+	token, payload, err := maker.MakeToken(userID, sessionID, duration)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	require.NotEmpty(t, payload)
