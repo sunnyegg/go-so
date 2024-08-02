@@ -37,6 +37,8 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 func (server *Server) registerRoutes() {
 	router := gin.Default()
 
+	router.Use(corsMiddleware())
+
 	// auth
 	router.GET("/auth/login", server.loginUser)
 	router.POST("/auth/refresh", server.refreshUser)

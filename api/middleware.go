@@ -73,3 +73,13 @@ func authMiddleware(server *Server) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+
+		c.Next()
+	}
+}
