@@ -33,3 +33,7 @@ WHERE id = $1;
 -- name: GetUserByUserID :one
 SELECT * FROM users
 WHERE user_id = $1 LIMIT 1;
+
+-- name: GetUserByUserLogin :one
+SELECT * FROM users
+WHERE user_login = $1 LIMIT 1;
