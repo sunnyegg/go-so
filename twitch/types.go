@@ -53,10 +53,22 @@ type StreamInfo struct {
 }
 
 type StreamInfoData struct {
-	ID        string `json:"id"`
 	GameName  string `json:"game_name"`
 	Title     string `json:"title"`
 	StartedAt string `json:"started_at"`
+}
+
+type ChannelInfo struct {
+	Data []ChannelInfoData `json:"data"`
+}
+
+type ChannelInfoData struct {
+	GameName string `json:"game_name"`
+	Title    string `json:"title"`
+}
+
+type ChannelFollowers struct {
+	Total int `json:"total"`
 }
 
 type EventsubSubscription struct {
@@ -80,4 +92,10 @@ type ConnectConfig struct {
 	StreamID string `json:"stream_id"`
 	Delay    int    `json:"delay"`
 	IsAutoSO bool   `json:"is_auto_so"`
+}
+
+type ChatMessage struct {
+	BroadcasterID string `json:"broadcaster_id"`
+	SenderID      string `json:"sender_id"`
+	Message       string `json:"message"`
 }

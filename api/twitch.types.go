@@ -27,3 +27,18 @@ type eventsubRequest struct {
 		} `json:"reward"`
 	} `json:"event"`
 }
+
+type getChannelInfoRequest struct {
+	UserLogin string `form:"user_login" binding:"required"`
+}
+
+type sendChatMessageRequest struct {
+	Channel string `json:"channel" binding:"required"`
+	Message string `json:"message" binding:"required"`
+}
+
+type sendShoutoutRequest struct {
+	FromID      string `json:"from_id" binding:"required"`
+	ToID        string `json:"to_id" binding:"required"`
+	ModeratorID string `json:"moderator_id" binding:"required"`
+}

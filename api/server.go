@@ -63,19 +63,25 @@ func (server *Server) registerRoutes() {
 	authRoutes.GET("/user_configs", server.getUserConfig)
 
 	// twitch
-	authRoutes.GET("/twitch/user", server.getTwitchUser)
-	authRoutes.POST("/twitch/chat/connect", server.connectChat)
 	router.POST("/twitch/eventsub", server.handleEventsub)
 
+	authRoutes.GET("/twitch/channel", server.getChannelInfo)
+	authRoutes.GET("/twitch/stream", server.getStreamInfo)
+	authRoutes.GET("/twitch/user", server.getTwitchUser)
+	authRoutes.GET("/twitch/chat/connect", server.connectChat)
+	authRoutes.POST("/twitch/chat/connect", server.connectChat)
+	authRoutes.POST("/twitch/chat/message", server.sendChatMessage)
+	authRoutes.POST("/twitch/chat/shoutout", server.sendShoutout)
+
 	// ws
-	router.GET("/ws", server.ws)
+	router.GET("/ws/:id", server.ws)
 
 	server.router = router
 }
 
 func (server *Server) registerCron() {
 	cronClient := cron.NewCron()
-	cronClient.AddFunc("@every 1h", cron.ValidateToken(context.Background(), server.store, server.config))
+	cronClient.AddFunc("@hourly", cron.ValidateToken(context.Background(), server.store, server.config))
 
 	cronClient.Start()
 }

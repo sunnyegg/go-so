@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -304,6 +305,160 @@ func (client *Client) RegisterEventsub(accessToken string, subscription Eventsub
 
 	if res.StatusCode != 200 {
 		return errors.New("failed to register eventsub: " + string(resBody))
+	}
+
+	return nil
+}
+
+func (client *Client) GetChannelInfo(accessToken, userID string) (*ChannelInfoData, error) {
+	var httpClient = &http.Client{}
+	url := client.helixURL + "/channels"
+	if userID != "" {
+		params := "?broadcaster_id=" + userID
+		url += params
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Client-Id", client.clientID)
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, errors.New("failed to get channel info: " + string(resBody))
+	}
+
+	var channelInfo = ChannelInfo{}
+	err = json.Unmarshal(resBody, &channelInfo)
+	if err != nil {
+		return nil, err
+	}
+	if len(channelInfo.Data) == 0 {
+		return nil, errors.New("channel not found")
+	}
+
+	return &channelInfo.Data[0], nil
+}
+
+func (client *Client) GetChannelFollowers(accessToken, channelID string) (*ChannelFollowers, error) {
+	var httpClient = &http.Client{}
+	url := client.helixURL + "/channels/followers"
+	if channelID != "" {
+		params := "?broadcaster_id=" + channelID
+		url += params
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Client-Id", client.clientID)
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, errors.New("failed to get channel followers: " + string(resBody))
+	}
+
+	var channelFollowers = ChannelFollowers{}
+	err = json.Unmarshal(resBody, &channelFollowers)
+	if err != nil {
+		return nil, err
+	}
+
+	return &channelFollowers, nil
+}
+
+func (client *Client) SendChatMessage(accessToken, userLogin, channel, message string) error {
+	var httpClient = &http.Client{}
+	url := client.helixURL + "/chat/messages"
+
+	bodyMsg := ChatMessage{
+		BroadcasterID: channel,
+		SenderID:      userLogin,
+		Message:       message,
+	}
+
+	bodyMsgBytes, err := json.Marshal(bodyMsg)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyMsgBytes))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Client-Id", client.clientID)
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != 200 {
+		return errors.New("failed to send chat message: " + string(resBody))
+	}
+
+	return nil
+}
+
+func (client *Client) SendShoutout(accessToken, fromID, toID, moderatorID string) error {
+	var httpClient = &http.Client{}
+	url := client.helixURL + "/chat/shoutouts"
+	url += "?from_broadcaster_id=" + fromID + "&to_broadcaster_id=" + toID + "&moderator_id=" + moderatorID
+
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Client-Id", client.clientID)
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(resBody))
+
+	if res.StatusCode != 200 && res.StatusCode != 204 {
+		return errors.New("failed to send shoutout: " + string(resBody))
 	}
 
 	return nil

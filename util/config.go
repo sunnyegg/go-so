@@ -17,7 +17,7 @@ type Config struct {
 	TwitchClientID       string        `mapstructure:"TWITCH_CLIENT_ID"`
 	TwitchClientSecret   string        `mapstructure:"TWITCH_SECRET_ID"`
 	FeAddress            string        `mapstructure:"FE_ADDRESS"`
-	RedirectURI          string        `mapstructure:"REDIRECT_URI"`
+	BeAddress            string        `mapstructure:"BE_ADDRESS"`
 	TwitchEventsubSecret string        `mapstructure:"TWITCH_EVENTSUB_SECRET"`
 }
 

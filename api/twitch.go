@@ -24,16 +24,9 @@ func (server *Server) getTwitchUser(ctx *gin.Context) {
 		return
 	}
 
-	// get sessionid
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
-
-	// session
-	session, err := server.store.GetSession(ctx, db.GetSessionParams{
-		ID:     util.UUIDToUUID(authPayload.SessionID),
-		UserID: authPayload.UserID,
-	})
+	payload, _, err := decryptHeader(ctx, server)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if err.Error() == "unauthorized" {
 			ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 			return
 		}
@@ -42,21 +35,7 @@ func (server *Server) getTwitchUser(ctx *gin.Context) {
 		return
 	}
 
-	// decrypt token
-	tokenBytes, err := util.Decrypt(session.EncryptedTwitchToken, server.config.TokenSymmetricKey)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-	token := []byte(tokenBytes)
-	payload := twitch.OAuthToken{}
-	err = json.Unmarshal(token, &payload)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
 	userInfo, err := twClient.GetUserInfo(payload.AccessToken, "", req.UserLogin)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
@@ -73,39 +52,18 @@ func (server *Server) connectChat(ctx *gin.Context) {
 		return
 	}
 
-	// get sessionid
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
-
 	// skip if already connected
 	if _, ok := ConnectedClients[req.UserLogin]; ok {
 		return
 	}
 
-	// session
-	session, err := server.store.GetSession(ctx, db.GetSessionParams{
-		ID:     util.UUIDToUUID(authPayload.SessionID),
-		UserID: authPayload.UserID,
-	})
+	payload, authPayload, err := decryptHeader(ctx, server)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if err.Error() == "unauthorized" {
 			ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	// decrypt token
-	tokenBytes, err := util.Decrypt(session.EncryptedTwitchToken, server.config.TokenSymmetricKey)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-	token := []byte(tokenBytes)
-	payload := twitch.OAuthToken{}
-	err = json.Unmarshal(token, &payload)
-	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
@@ -117,7 +75,7 @@ func (server *Server) connectChat(ctx *gin.Context) {
 		Delay:    5,
 	}
 
-	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
 	twClient.ConnectTwitchChat(configChat, req.UserLogin, req.UserLogin, payload.AccessToken)
 
 	ConnectedClients[req.UserLogin] = true
@@ -219,4 +177,174 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, nil)
 		return
 	}
+}
+
+func (server *Server) getChannelInfo(ctx *gin.Context) {
+	var req getChannelInfoRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	payload, _, err := decryptHeader(ctx, server)
+	if err != nil {
+		if err.Error() == "unauthorized" {
+			ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
+	userInfo, err := twClient.GetUserInfo(payload.AccessToken, "", req.UserLogin)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	channelInfo, err := twClient.GetChannelInfo(payload.AccessToken, userInfo.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, channelInfo)
+}
+
+func (server *Server) getStreamInfo(ctx *gin.Context) {
+	var req getChannelInfoRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	// get sessionid
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
+	// session
+	session, err := server.store.GetSession(ctx, db.GetSessionParams{
+		ID:     util.UUIDToUUID(authPayload.SessionID),
+		UserID: authPayload.UserID,
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// decrypt token
+	tokenBytes, err := util.Decrypt(session.EncryptedTwitchToken, server.config.TokenSymmetricKey)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	token := []byte(tokenBytes)
+	payload := twitch.OAuthToken{}
+	err = json.Unmarshal(token, &payload)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
+	userInfo, err := twClient.GetUserInfo(payload.AccessToken, "", req.UserLogin)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	streamInfo, err := twClient.GetStreamInfo(payload.AccessToken, userInfo.ID)
+	if err != nil {
+		if err.Error() == "stream not found" {
+			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, streamInfo)
+}
+
+func (server *Server) sendChatMessage(ctx *gin.Context) {
+	var req sendChatMessageRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	payload, _, err := decryptHeader(ctx, server)
+	if err != nil {
+		if err.Error() == "unauthorized" {
+			ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
+
+	// get user id
+	channelInfo, err := twClient.GetUserInfo(payload.AccessToken, "", req.Channel)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	twClient.SendChatMessage(payload.AccessToken, channelInfo.ID, channelInfo.ID, req.Message)
+
+	ctx.JSON(http.StatusOK, nil)
+}
+
+func (server *Server) sendShoutout(ctx *gin.Context) {
+	var req sendShoutoutRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	payload, _, err := decryptHeader(ctx, server)
+	if err != nil {
+		if err.Error() == "unauthorized" {
+			ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
+
+	// get user id
+	fromUser, err := twClient.GetUserInfo(payload.AccessToken, "", req.FromID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	toUser, err := twClient.GetUserInfo(payload.AccessToken, "", req.ToID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	moderatorUser, err := twClient.GetUserInfo(payload.AccessToken, "", req.ModeratorID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	twClient.SendShoutout(payload.AccessToken, fromUser.ID, toUser.ID, moderatorUser.ID)
+
+	ctx.JSON(http.StatusOK, nil)
 }

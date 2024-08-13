@@ -31,12 +31,12 @@ func NewChatClient(username, token string) *ChatClient {
 }
 
 func (client *ChatClient) Connect(config ConnectConfig) {
-	ch := channel.NewChannel(channel.ChannelBlacklist)
+	chBk := channel.NewChannel(channel.ChannelBlacklist)
 	var msg map[string]string
 
 	go func() {
 		for {
-			msg = <-ch.Listen()
+			msg = <-chBk.Listen()
 			fmt.Println(msg)
 		}
 	}()
@@ -64,12 +64,14 @@ func (client *ChatClient) Connect(config ConnectConfig) {
 		}
 
 		AlreadyPresent[user] = true
-		ch := channel.NewChannel(channel.ChannelWebsocket)
+		chWs := channel.NewChannel(channel.ChannelWebsocket)
 
 		go func() {
-			ch.Send(map[string]string{
+			chWs.Send(map[string]string{
 				"stream_id": config.StreamID,
 				"username":  message.User.Name,
+				"channel":   message.Channel,
+				"token":     client.token,
 			})
 		}()
 

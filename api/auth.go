@@ -15,26 +15,6 @@ import (
 	"github.com/sunnyegg/go-so/util"
 )
 
-type loginUserRequest struct {
-	Code             string `form:"code"`
-	Scope            string `form:"scope"`
-	State            string `form:"state" binding:"required"`
-	Error            string `form:"error"`
-	ErrorDescription string `form:"error_description"`
-}
-
-type userResponse struct {
-	UserLogin       string `json:"user_login"`
-	UserName        string `json:"user_name"`
-	ProfileImageUrl string `json:"profile_image_url"`
-}
-
-type loginUserResponse struct {
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
-	User         userResponse `json:"user"`
-}
-
 var tempState = make(map[string]bool, 0)
 
 func (server *Server) loginUser(ctx *gin.Context) {
@@ -57,7 +37,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	delete(tempState, req.State)
 
 	// login twitch
-	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.RedirectURI)
+	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
 	token, err := twClient.GetOAuthToken(req.Code)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
@@ -101,12 +81,12 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	}
 
 	eventsubPayload := twitch.EventsubSubscription{
-		Type:      "stream.online",
+		Type:      EventsubPayloadTypeStreamOnline,
 		Version:   "1",
 		Condition: twitch.EventsubSubscriptionCondition{BroadcasterUserID: userInfo.ID},
 		Transport: twitch.EventsubSubscriptionTransport{
 			Method:   "webhook",
-			Callback: server.config.RedirectURI + "/twitch/eventsub",
+			Callback: server.config.BeAddress + "/twitch/eventsub",
 			Secret:   server.config.TwitchClientSecret,
 		},
 	}
@@ -116,7 +96,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
-	eventsubPayload.Type = "channel.channel_points_custom_reward_redemption.add"
+	eventsubPayload.Type = EventsubPayloadTypeChannelRedemption
 	err = twClient.RegisterEventsub(appAccessToken.AccessToken, eventsubPayload)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
@@ -124,14 +104,6 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, rsp)
-}
-
-type createOrUpdateUserArg struct {
-	UserID          string
-	UserLogin       string
-	UserName        string
-	ProfileImageUrl string
-	Token           *twitch.OAuthToken
 }
 
 func createOrUpdateUser(ctx *gin.Context, server *Server, arg createOrUpdateUserArg) (loginUserResponse, error) {
@@ -246,11 +218,6 @@ func createLoginUserResponse(ctx *gin.Context, server *Server, user db.User, tok
 	}, nil
 }
 
-type refreshUserRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-// TODO: redo masalah ID untuk check session di middleware
 func (server *Server) refreshUser(ctx *gin.Context) {
 	var req refreshUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -303,17 +270,12 @@ func (server *Server) refreshUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, accessToken)
 }
 
-type createStateResponse struct {
-	URL string `json:"url"`
-}
-
 func (server *Server) createState(ctx *gin.Context) {
-	scope := "channel:moderate chat:edit chat:read moderator:manage:shoutouts channel:read:redemptions" // TODO: change to get scope from db scope
 	state := util.RandomString(16)
 	tempState[state] = true
-	redirectURI := server.config.RedirectURI + "/auth/login"
+	redirectURI := server.config.FeAddress + "/auth/login"
 
-	url := "https://id.twitch.tv/oauth2/authorize?client_id=" + server.config.TwitchClientID + "&redirect_uri=" + redirectURI + "&response_type=code&scope=" + scope + "&state=" + state
+	url := "https://id.twitch.tv/oauth2/authorize?client_id=" + server.config.TwitchClientID + "&redirect_uri=" + redirectURI + "&response_type=code&scope=" + TwitchScope + "&state=" + state
 
 	ctx.JSON(http.StatusOK, createStateResponse{
 		URL: url,
