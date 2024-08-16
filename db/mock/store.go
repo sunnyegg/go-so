@@ -288,10 +288,10 @@ func (mr *MockStoreMockRecorder) GetUserConfig(arg0, arg1 interface{}) *gomock.C
 }
 
 // ListSession mocks base method.
-func (m *MockStore) ListSession(arg0 context.Context) ([]db.Session, error) {
+func (m *MockStore) ListSession(arg0 context.Context) ([]db.ListSessionRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSession", arg0)
-	ret0, _ := ret[0].([]db.Session)
+	ret0, _ := ret[0].([]db.ListSessionRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

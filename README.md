@@ -9,5 +9,9 @@
 - Apply blacklist to twitch chat (v)
 - Apply delay to twitch chat (v)
 - Apply auto SO to twitch chat (v)
-- Send shoutout to twitch chat () -> /shoutout
+- Send shoutout to twitch chat (v) -> /shoutout
+- Fix reconnect to chat after refresh token (v)
+- Fix sending message to websocket (v)
+- Fix remove closed websocket clients (v)
+- Fix blacklist ()
 - Logging error

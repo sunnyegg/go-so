@@ -2,7 +2,6 @@ package twitch
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	twitchClient "github.com/gempir/go-twitch-irc/v4"
@@ -15,63 +14,63 @@ type ChatClient struct {
 	ircClient *twitchClient.Client
 }
 
-var ConnectedClients = make(map[string]*twitchClient.Client)
-var AlreadyPresent = make(map[string]bool)
+var connectedClients = make(map[string]*twitchClient.Client)
+var alreadyPresent = make(map[string]map[string]bool)
 
 func NewChatClient(username, token string) *ChatClient {
-	if _, ok := ConnectedClients[username]; !ok {
-		ConnectedClients[username] = twitchClient.NewClient(username, "oauth:"+token)
+	if _, ok := connectedClients[username]; !ok {
+		connectedClients[username] = twitchClient.NewClient(username, "oauth:"+token)
 	}
 
 	return &ChatClient{
 		username:  username,
 		token:     token,
-		ircClient: ConnectedClients[username],
+		ircClient: connectedClients[username],
 	}
 }
 
 func (client *ChatClient) Connect(config ConnectConfig) {
-	chBk := channel.NewChannel(channel.ChannelBlacklist)
-	var msg map[string]string
+	var msgGeneral map[string]string
+	var newToken string
+	chGeneral := channel.NewChannel(channel.ChannelGeneral)
+	chWs := channel.NewChannel(channel.ChannelWebsocket)
+	token := client.token
 
 	go func() {
 		for {
-			msg = <-chBk.Listen()
-			fmt.Println(msg)
+			msgGeneral = <-chGeneral.Listen()
+
+			if msgGeneral["channel"] == client.username {
+				newToken = msgGeneral["token"]
+			}
 		}
 	}()
+
+	if _, ok := alreadyPresent[config.StreamID]; !ok {
+		alreadyPresent[config.StreamID] = make(map[string]bool)
+	}
 
 	client.ircClient.OnPrivateMessage(func(message twitchClient.PrivateMessage) {
 		fmt.Printf("[%s] %s: %s\n", message.Channel, message.User.DisplayName, message.Message)
 
-		// skip blacklist
-		if data, ok := msg[message.Channel]; ok {
-			dataBlacklist := strings.Split(data, ",")
-
-			if len(dataBlacklist) > 0 {
-				for _, blacklist := range dataBlacklist {
-					if strings.EqualFold(blacklist, message.User.Name) {
-						return
-					}
-				}
-			}
+		if newToken != "" && token != newToken {
+			token = newToken
+			client.ircClient.SetIRCToken(token)
+			fmt.Printf("[%s] Token is updated\n", client.username)
 		}
 
-		user := config.StreamID + message.User.Name
-
-		if _, ok := AlreadyPresent[user]; ok {
+		if _, ok := alreadyPresent[config.StreamID][message.User.Name]; ok {
 			return
 		}
 
-		AlreadyPresent[user] = true
-		chWs := channel.NewChannel(channel.ChannelWebsocket)
+		alreadyPresent[config.StreamID][message.User.Name] = true
 
 		go func() {
 			chWs.Send(map[string]string{
 				"stream_id": config.StreamID,
 				"username":  message.User.Name,
 				"channel":   message.Channel,
-				"token":     client.token,
+				"token":     token,
 			})
 		}()
 
@@ -93,11 +92,14 @@ func (client *ChatClient) Connect(config ConnectConfig) {
 	}()
 }
 
-func (client *ChatClient) Disconnect(username string) {
+func (client *ChatClient) Disconnect(streamId, username string) {
 	err := client.ircClient.Disconnect()
 	if err != nil {
 		fmt.Printf("[%s] Error when disconnecting from twitch irc: %s\n", username, err)
 	}
+
+	delete(alreadyPresent, streamId)
+	delete(connectedClients, username)
 }
 
 func (client *ChatClient) Join(username, channel string) {

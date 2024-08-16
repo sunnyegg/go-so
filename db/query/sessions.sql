@@ -33,8 +33,10 @@ ORDER BY s.created_at DESC
 LIMIT 1;
 
 -- name: ListSession :many
-SELECT * FROM sessions
-ORDER BY created_at ASC;
+SELECT * FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.is_blocked = false
+ORDER BY s.created_at ASC;
 
 -- name: UpdateSession :exec
 UPDATE sessions

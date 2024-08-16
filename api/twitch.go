@@ -54,6 +54,7 @@ func (server *Server) connectChat(ctx *gin.Context) {
 
 	// skip if already connected
 	if _, ok := ConnectedClients[req.UserLogin]; ok {
+		ctx.JSON(http.StatusOK, nil)
 		return
 	}
 
@@ -75,8 +76,9 @@ func (server *Server) connectChat(ctx *gin.Context) {
 		Delay:    5,
 	}
 
-	twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
-	twClient.ConnectTwitchChat(configChat, req.UserLogin, req.UserLogin, payload.AccessToken)
+	twChatClient := twitch.NewChatClient(req.UserLogin, payload.AccessToken)
+	twChatClient.Connect(configChat)
+	twChatClient.Join(req.UserLogin, req.Channel)
 
 	ConnectedClients[req.UserLogin] = true
 
@@ -138,7 +140,8 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 		ch := channel.NewChannel(channel.ChannelEventsub)
 		go func() {
 			ch.Send(map[string]string{
-				req.Subscription.Condition.BroadcasterUserID: "stream online",
+				"type":    EventsubSubscriptionTypeStreamOnline,
+				"channel": req.Event.UserLogin,
 			})
 		}()
 

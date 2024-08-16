@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
+	"github.com/sunnyegg/go-so/channel"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/twitch"
 	"github.com/sunnyegg/go-so/util"
@@ -13,6 +14,7 @@ import (
 
 func ValidateToken(ctx context.Context, store db.Store, config util.Config) func() {
 	twClient := twitch.NewClient(config.TwitchClientID, config.TwitchClientSecret, config.FeAddress)
+	ch := channel.NewChannel(channel.ChannelGeneral)
 
 	return func() {
 		// get sessions
@@ -56,6 +58,12 @@ func ValidateToken(ctx context.Context, store db.Store, config util.Config) func
 					log.Println("failed to refresh token", err)
 					return
 				}
+
+				// send token to all connected chat clients
+				go ch.Send(map[string]string{
+					"channel": session.UserLogin,
+					"token":   refreshedToken.AccessToken,
+				})
 
 				// encrypt token
 				log.Println("encrypting token...")

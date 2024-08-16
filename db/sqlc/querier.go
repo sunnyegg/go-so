@@ -26,7 +26,7 @@ type Querier interface {
 	GetUserByUserID(ctx context.Context, userID string) (User, error)
 	GetUserByUserLogin(ctx context.Context, userLogin string) (User, error)
 	GetUserConfig(ctx context.Context, arg GetUserConfigParams) (GetUserConfigRow, error)
-	ListSession(ctx context.Context) ([]Session, error)
+	ListSession(ctx context.Context) ([]ListSessionRow, error)
 	ListStreams(ctx context.Context, arg ListStreamsParams) ([]ListStreamsRow, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	UpdateSession(ctx context.Context, arg UpdateSessionParams) error

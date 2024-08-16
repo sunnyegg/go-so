@@ -134,13 +134,18 @@ func (server *Server) ws(ctx *gin.Context) {
 				return
 			}
 
-			for _, conn := range connectedClients[msgWs["channel"]] {
+			var closedClients []int
+			for i, conn := range connectedClients[msgWs["channel"]] {
 				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
-
-				// TODO: delete client if error
 				if err != nil {
-					conn.Close()
+					closedClients = append(closedClients, i)
 				}
+			}
+
+			// remove closed clients
+			for _, i := range closedClients {
+				connectedClients[msgWs["channel"]][i] = connectedClients[msgWs["channel"]][len(connectedClients[msgWs["channel"]])-1]
+				connectedClients[msgWs["channel"]] = connectedClients[msgWs["channel"]][:len(connectedClients[msgWs["channel"]])-1]
 			}
 		}
 	}()
@@ -153,9 +158,29 @@ func (server *Server) ws(ctx *gin.Context) {
 			if err != nil {
 				return
 			}
-			err = ws.WriteMessage(websocket.TextMessage, msgBytes)
+
+			msgOutput := WsMessage{
+				Type: "eventsub",
+				Data: string(msgBytes),
+			}
+
+			msgOutputBytes, err := json.Marshal(msgOutput)
 			if err != nil {
 				return
+			}
+
+			var closedClients []int
+			for i, conn := range connectedClients[msgEs["channel"]] {
+				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
+				if err != nil {
+					closedClients = append(closedClients, i)
+				}
+			}
+
+			// remove closed clients
+			for _, i := range closedClients {
+				connectedClients[msgEs["channel"]][i] = connectedClients[msgEs["channel"]][len(connectedClients[msgEs["channel"]])-1]
+				connectedClients[msgEs["channel"]] = connectedClients[msgEs["channel"]][:len(connectedClients[msgEs["channel"]])-1]
 			}
 		}
 	}()

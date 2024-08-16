@@ -201,19 +201,41 @@ func (q *Queries) GetSessionByUserID(ctx context.Context, userID string) (GetSes
 }
 
 const listSession = `-- name: ListSession :many
-SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token, updated_at FROM sessions
-ORDER BY created_at ASC
+SELECT s.id, s.user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, s.created_at, encrypted_twitch_token, s.updated_at, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, u.updated_at FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.is_blocked = false
+ORDER BY s.created_at ASC
 `
 
-func (q *Queries) ListSession(ctx context.Context) ([]Session, error) {
+type ListSessionRow struct {
+	ID                   pgtype.UUID        `json:"id"`
+	UserID               int64              `json:"user_id"`
+	RefreshToken         string             `json:"refresh_token"`
+	UserAgent            string             `json:"user_agent"`
+	ClientIp             string             `json:"client_ip"`
+	IsBlocked            bool               `json:"is_blocked"`
+	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	EncryptedTwitchToken string             `json:"encrypted_twitch_token"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	ID_2                 int64              `json:"id_2"`
+	UserID_2             string             `json:"user_id_2"`
+	UserLogin            string             `json:"user_login"`
+	UserName             string             `json:"user_name"`
+	ProfileImageUrl      string             `json:"profile_image_url"`
+	CreatedAt_2          pgtype.Timestamptz `json:"created_at_2"`
+	UpdatedAt_2          pgtype.Timestamptz `json:"updated_at_2"`
+}
+
+func (q *Queries) ListSession(ctx context.Context) ([]ListSessionRow, error) {
 	rows, err := q.db.Query(ctx, listSession)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Session{}
+	items := []ListSessionRow{}
 	for rows.Next() {
-		var i Session
+		var i ListSessionRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -225,6 +247,13 @@ func (q *Queries) ListSession(ctx context.Context) ([]Session, error) {
 			&i.CreatedAt,
 			&i.EncryptedTwitchToken,
 			&i.UpdatedAt,
+			&i.ID_2,
+			&i.UserID_2,
+			&i.UserLogin,
+			&i.UserName,
+			&i.ProfileImageUrl,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
 		); err != nil {
 			return nil, err
 		}
