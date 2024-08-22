@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	pgtype "github.com/jackc/pgx/v5/pgtype"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 )
 
@@ -110,6 +111,20 @@ func (mr *MockStoreMockRecorder) CreateUserConfig(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUserConfig", reflect.TypeOf((*MockStore)(nil).CreateUserConfig), arg0, arg1)
 }
 
+// DeleteSession mocks base method.
+func (m *MockStore) DeleteSession(arg0 context.Context, arg1 pgtype.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSession", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteSession indicates an expected call of DeleteSession.
+func (mr *MockStoreMockRecorder) DeleteSession(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSession", reflect.TypeOf((*MockStore)(nil).DeleteSession), arg0, arg1)
+}
+
 // DeleteStream mocks base method.
 func (m *MockStore) DeleteStream(arg0 context.Context, arg1 int64) error {
 	m.ctrl.T.Helper()
@@ -168,10 +183,10 @@ func (mr *MockStoreMockRecorder) GetSession(arg0, arg1 interface{}) *gomock.Call
 }
 
 // GetSessionByRefreshToken mocks base method.
-func (m *MockStore) GetSessionByRefreshToken(arg0 context.Context, arg1 string) (db.Session, error) {
+func (m *MockStore) GetSessionByRefreshToken(arg0 context.Context, arg1 string) (db.GetSessionByRefreshTokenRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSessionByRefreshToken", arg0, arg1)
-	ret0, _ := ret[0].(db.Session)
+	ret0, _ := ret[0].(db.GetSessionByRefreshTokenRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

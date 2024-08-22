@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sunnyegg/go-so/channel"
@@ -94,6 +95,35 @@ func ValidateToken(ctx context.Context, store db.Store, config util.Config) func
 
 			// token's session is valid
 			log.Printf("session[%d] %s token is valid", i, sessionID)
+		}
+	}
+}
+
+func DeleteExpiredSession(ctx context.Context, store db.Store, config util.Config) func() {
+	return func() {
+		// get sessions
+		sessions, err := store.ListSession(ctx)
+		if err != nil {
+			return
+		}
+
+		expiredSessions := make([]db.ListSessionRow, 0)
+
+		for _, session := range sessions {
+			if session.ExpiresAt.Time.Before(time.Now()) {
+				expiredSessions = append(expiredSessions, session)
+			}
+		}
+
+		log.Printf("deleting %d expired sessions", len(expiredSessions))
+		for _, session := range expiredSessions {
+			id := uuid.UUID(session.ID.Bytes)
+			log.Printf("deleting session %s", id.String())
+			err = store.DeleteSession(ctx, session.ID)
+			if err != nil {
+				log.Printf("failed to delete session %s", id.String())
+				return
+			}
 		}
 	}
 }

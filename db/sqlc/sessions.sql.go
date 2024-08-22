@@ -66,6 +66,16 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	return i, err
 }
 
+const deleteSession = `-- name: DeleteSession :exec
+DELETE FROM sessions
+WHERE id = $1
+`
+
+func (q *Queries) DeleteSession(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSession, id)
+	return err
+}
+
 const getSession = `-- name: GetSession :one
 SELECT s.id, s.user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, s.created_at, encrypted_twitch_token, s.updated_at, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, u.updated_at FROM sessions s
 JOIN users u ON s.user_id = u.id
@@ -124,14 +134,35 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 }
 
 const getSessionByRefreshToken = `-- name: GetSessionByRefreshToken :one
-SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at, encrypted_twitch_token, updated_at FROM sessions
-WHERE refresh_token = $1 AND is_blocked = false
+SELECT s.id, s.user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, s.created_at, encrypted_twitch_token, s.updated_at, u.id, u.user_id, user_login, user_name, profile_image_url, u.created_at, u.updated_at FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.refresh_token = $1 AND s.is_blocked = false
 LIMIT 1
 `
 
-func (q *Queries) GetSessionByRefreshToken(ctx context.Context, refreshToken string) (Session, error) {
+type GetSessionByRefreshTokenRow struct {
+	ID                   pgtype.UUID        `json:"id"`
+	UserID               int64              `json:"user_id"`
+	RefreshToken         string             `json:"refresh_token"`
+	UserAgent            string             `json:"user_agent"`
+	ClientIp             string             `json:"client_ip"`
+	IsBlocked            bool               `json:"is_blocked"`
+	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	EncryptedTwitchToken string             `json:"encrypted_twitch_token"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	ID_2                 int64              `json:"id_2"`
+	UserID_2             string             `json:"user_id_2"`
+	UserLogin            string             `json:"user_login"`
+	UserName             string             `json:"user_name"`
+	ProfileImageUrl      string             `json:"profile_image_url"`
+	CreatedAt_2          pgtype.Timestamptz `json:"created_at_2"`
+	UpdatedAt_2          pgtype.Timestamptz `json:"updated_at_2"`
+}
+
+func (q *Queries) GetSessionByRefreshToken(ctx context.Context, refreshToken string) (GetSessionByRefreshTokenRow, error) {
 	row := q.db.QueryRow(ctx, getSessionByRefreshToken, refreshToken)
-	var i Session
+	var i GetSessionByRefreshTokenRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -143,6 +174,13 @@ func (q *Queries) GetSessionByRefreshToken(ctx context.Context, refreshToken str
 		&i.CreatedAt,
 		&i.EncryptedTwitchToken,
 		&i.UpdatedAt,
+		&i.ID_2,
+		&i.UserID_2,
+		&i.UserLogin,
+		&i.UserName,
+		&i.ProfileImageUrl,
+		&i.CreatedAt_2,
+		&i.UpdatedAt_2,
 	)
 	return i, err
 }

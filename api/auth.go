@@ -232,10 +232,6 @@ func (server *Server) refreshUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
-	if payload.ExpiredAt.Before(time.Now()) {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("expired")))
-		return
-	}
 
 	// check session
 	session, err := server.store.GetSessionByRefreshToken(ctx, req.RefreshToken)
@@ -280,4 +276,39 @@ func (server *Server) createState(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, createStateResponse{
 		URL: url,
 	})
+}
+
+func (server *Server) logoutUser(ctx *gin.Context) {
+	payload, _, err := decryptHeader(ctx, server)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
+	// check session
+	session, err := server.store.GetSessionByRefreshToken(ctx, payload.RefreshToken)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid session")))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// delete session
+	err = server.store.DeleteSession(ctx, session.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	delete(connectedTwitchClients, session.UserLogin)
+	delete(connectedWsClients, session.UserLogin)
+
+	// delete twitch chat
+	twitch.Disconnect(session.UserLogin)
+
+	ctx.JSON(http.StatusOK, nil)
 }

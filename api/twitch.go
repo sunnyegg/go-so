@@ -15,7 +15,7 @@ import (
 	"github.com/sunnyegg/go-so/util"
 )
 
-var ConnectedClients = make(map[string]bool)
+var connectedTwitchClients = make(map[string]bool)
 
 func (server *Server) getTwitchUser(ctx *gin.Context) {
 	var req getTwitchUserRequest
@@ -53,7 +53,7 @@ func (server *Server) connectChat(ctx *gin.Context) {
 	}
 
 	// skip if already connected
-	if _, ok := ConnectedClients[req.UserLogin]; ok {
+	if _, ok := connectedTwitchClients[req.UserLogin]; ok {
 		ctx.JSON(http.StatusOK, nil)
 		return
 	}
@@ -80,7 +80,7 @@ func (server *Server) connectChat(ctx *gin.Context) {
 	twChatClient.Connect(configChat)
 	twChatClient.Join(req.UserLogin, req.Channel)
 
-	ConnectedClients[req.UserLogin] = true
+	connectedTwitchClients[req.UserLogin] = true
 
 	// get user config blacklist
 	userConfig, err := server.store.GetUserConfig(ctx, db.GetUserConfigParams{
@@ -109,6 +109,7 @@ func (server *Server) connectChat(ctx *gin.Context) {
 func (server *Server) handleEventsub(ctx *gin.Context) {
 	var req eventsubRequest
 	var err error
+	ch := channel.NewChannel(channel.ChannelEventsub)
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -137,13 +138,10 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 
 	// if someone goes live
 	if req.Subscription.Type == EventsubSubscriptionTypeStreamOnline {
-		ch := channel.NewChannel(channel.ChannelEventsub)
-		go func() {
-			ch.Send(map[string]string{
-				"type":    EventsubSubscriptionTypeStreamOnline,
-				"channel": req.Event.UserLogin,
-			})
-		}()
+		go ch.Send(map[string]string{
+			"type":    EventsubSubscriptionTypeStreamOnline,
+			"channel": req.Event.UserLogin,
+		})
 
 		ctx.JSON(http.StatusOK, nil)
 		return
@@ -151,7 +149,11 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 
 	// if someone goes offline
 	if req.Subscription.Type == EventsubSubscriptionTypeStreamOffline {
-		delete(ConnectedClients, req.Event.UserLogin)
+		delete(connectedTwitchClients, req.Event.UserLogin)
+		go ch.Send(map[string]string{
+			"type":    EventsubSubscriptionTypeStreamOffline,
+			"channel": req.Event.UserLogin,
+		})
 
 		ctx.JSON(http.StatusOK, nil)
 		return

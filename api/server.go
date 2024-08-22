@@ -1,11 +1,9 @@
 package api
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sunnyegg/go-so/cron"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/token"
 	"github.com/sunnyegg/go-so/util"
@@ -43,6 +41,7 @@ func (server *Server) registerRoutes() {
 	router.GET("/auth/login", server.loginUser)
 	router.POST("/auth/refresh", server.refreshUser)
 	router.GET("/auth/state", server.createState)
+	router.POST("/auth/logout", server.logoutUser)
 
 	authRoutes := router.Group("/").Use(authMiddleware(server))
 
@@ -77,13 +76,6 @@ func (server *Server) registerRoutes() {
 	router.GET("/ws/:id", server.ws)
 
 	server.router = router
-}
-
-func (server *Server) registerCron() {
-	cronClient := cron.NewCron()
-	cronClient.AddFunc("@hourly", cron.ValidateToken(context.Background(), server.store, server.config))
-
-	cronClient.Start()
 }
 
 func (server *Server) Start(address string) error {

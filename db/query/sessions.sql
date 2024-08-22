@@ -21,8 +21,9 @@ WHERE s.id = $1 AND s.user_id = $2
 LIMIT 1;
 
 -- name: GetSessionByRefreshToken :one
-SELECT * FROM sessions
-WHERE refresh_token = $1 AND is_blocked = false
+SELECT * FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.refresh_token = $1 AND s.is_blocked = false
 LIMIT 1;
 
 -- name: GetSessionByUserID :one
@@ -45,3 +46,7 @@ SET
   updated_at = now()
 WHERE id = $1
 RETURNING *;
+
+-- name: DeleteSession :exec
+DELETE FROM sessions
+WHERE id = $1;

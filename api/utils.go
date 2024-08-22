@@ -14,7 +14,12 @@ import (
 
 func decryptHeader(ctx *gin.Context, server *Server) (*twitch.OAuthToken, *token.Payload, error) {
 	// get sessionid
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	authValue, isExist := ctx.Get(authorizationPayloadKey)
+	if !isExist {
+		return nil, nil, errors.New("unauthorized")
+	}
+
+	authPayload := authValue.(*token.Payload)
 
 	// session
 	session, err := server.store.GetSession(ctx, db.GetSessionParams{

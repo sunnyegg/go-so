@@ -6,6 +6,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -14,11 +16,12 @@ type Querier interface {
 	CreateStream(ctx context.Context, arg CreateStreamParams) (Stream, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserConfig(ctx context.Context, arg CreateUserConfigParams) (UserConfig, error)
+	DeleteSession(ctx context.Context, id pgtype.UUID) error
 	DeleteStream(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteUserConfig(ctx context.Context, id int64) error
 	GetSession(ctx context.Context, arg GetSessionParams) (GetSessionRow, error)
-	GetSessionByRefreshToken(ctx context.Context, refreshToken string) (Session, error)
+	GetSessionByRefreshToken(ctx context.Context, refreshToken string) (GetSessionByRefreshTokenRow, error)
 	GetSessionByUserID(ctx context.Context, userID string) (GetSessionByUserIDRow, error)
 	GetStream(ctx context.Context, arg GetStreamParams) (GetStreamRow, error)
 	GetStreamAttendanceMembers(ctx context.Context, arg GetStreamAttendanceMembersParams) ([]GetStreamAttendanceMembersRow, error)
