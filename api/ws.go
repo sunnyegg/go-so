@@ -2,17 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/sunnyegg/go-so/channel"
-	db "github.com/sunnyegg/go-so/db/sqlc"
-	"github.com/sunnyegg/go-so/twitch"
-	"github.com/sunnyegg/go-so/util"
 )
 
 type WsMessage struct {
@@ -59,150 +53,90 @@ func (server *Server) ws(ctx *gin.Context) {
 
 	connectedWsClients[uri.ID] = append(connectedWsClients[uri.ID], ws)
 
-	// connect to channel
-	chWs := channel.NewChannel(channel.ChannelWebsocket)
-	chEs := channel.NewChannel(channel.ChannelEventsub)
-
-	go func() {
-		for {
-			msgWs := <-chWs.Listen()
-
-			if _, ok := connectedWsClients[msgWs["channel"]]; !ok {
-				return
-			}
-
-			// attendance
-			streamID := msgWs["stream_id"]
-			username := msgWs["username"]
-			parsedStreamID, _ := util.ParseStringToInt64(streamID)
-			_, err = server.store.CreateAttendanceMember(ctx, db.CreateAttendanceMemberParams{
-				StreamID:  parsedStreamID,
-				Username:  username,
-				IsShouted: false,
-				PresentAt: util.StringToTimestamp(time.Now().Format(time.RFC3339)),
-			})
-			if err != nil {
-				if strings.Contains(err.Error(), "duplicate key") {
-					fmt.Println("member exists")
-					return
-				}
-
-				fmt.Println(err)
-			}
-
-			twClient := twitch.NewClient(server.config.TwitchClientID, server.config.TwitchClientSecret, server.config.FeAddress)
-			userInfo, err := twClient.GetUserInfo(msgWs["token"], "", msgWs["username"])
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			channelInfo, err := twClient.GetChannelInfo(msgWs["token"], userInfo.ID)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			channelFollowers, err := twClient.GetChannelFollowers(msgWs["token"], userInfo.ID)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			messageData := WsMessageData{
-				Channel:         msgWs["channel"],
-				UserName:        userInfo.DisplayName,
-				UserLogin:       userInfo.Login,
-				Followers:       channelFollowers.Total,
-				ProfileImageUrl: userInfo.ProfileImageURL,
-				LastSeenPlaying: channelInfo.GameName,
-			}
-
-			// map[string]string to []byte
-			msgBytes, err := json.Marshal(messageData)
-			if err != nil {
-				return
-			}
-
-			msgOutput := WsMessage{
-				Type: "chatter",
-				Data: string(msgBytes),
-			}
-
-			msgOutputBytes, err := json.Marshal(msgOutput)
-			if err != nil {
-				return
-			}
-
-			var closedClients []int
-			for i, conn := range connectedWsClients[msgWs["channel"]] {
-				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
-				if err != nil {
-					closedClients = append(closedClients, i)
-				}
-			}
-
-			// remove closed clients
-			for _, i := range closedClients {
-				connectedWsClients[msgWs["channel"]][i] = connectedWsClients[msgWs["channel"]][len(connectedWsClients[msgWs["channel"]])-1]
-				connectedWsClients[msgWs["channel"]] = connectedWsClients[msgWs["channel"]][:len(connectedWsClients[msgWs["channel"]])-1]
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			msgEs := <-chEs.Listen()
-
-			msgBytes, err := json.Marshal(msgEs)
-			if err != nil {
-				return
-			}
-
-			msgOutput := WsMessage{
-				Type: "eventsub",
-				Data: string(msgBytes),
-			}
-
-			msgOutputBytes, err := json.Marshal(msgOutput)
-			if err != nil {
-				return
-			}
-
-			var closedClients []int
-			for i, conn := range connectedWsClients[msgEs["channel"]] {
-				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
-				if err != nil {
-					closedClients = append(closedClients, i)
-				}
-			}
-
-			// remove closed clients
-			for _, i := range closedClients {
-				connectedWsClients[msgEs["channel"]][i] = connectedWsClients[msgEs["channel"]][len(connectedWsClients[msgEs["channel"]])-1]
-				connectedWsClients[msgEs["channel"]] = connectedWsClients[msgEs["channel"]][:len(connectedWsClients[msgEs["channel"]])-1]
-			}
-		}
-	}()
-
-	reader(ws)
+	go chatter(connectedWsClients)
+	go eventsub(connectedWsClients)
 }
 
-func reader(ws *websocket.Conn) {
-	var msg WsMessage
+func chatter(wsClients map[string][]*websocket.Conn) {
+	chWs := channel.NewChannel(channel.ChannelWebsocket)
 
 	for {
-		_, message, err := ws.ReadMessage()
-		if err != nil {
-			break
+		msgWs := <-chWs.Listen()
+
+		if _, ok := wsClients[msgWs["channel"]]; !ok {
+			return
 		}
 
-		err = json.Unmarshal(message, &msg)
-		if err != nil {
-			fmt.Println(err)
-			continue
+		messageData := WsMessageData{
+			Channel:   msgWs["channel"],
+			UserLogin: msgWs["username"],
 		}
 
-		fmt.Println(msg.Data)
+		// map[string]string to []byte
+		msgBytes, err := json.Marshal(messageData)
+		if err != nil {
+			return
+		}
+
+		msgOutput := WsMessage{
+			Type: "chatter",
+			Data: string(msgBytes),
+		}
+
+		msgOutputBytes, err := json.Marshal(msgOutput)
+		if err != nil {
+			return
+		}
+
+		var closedClients []int
+		for i, conn := range wsClients[msgWs["channel"]] {
+			err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
+			if err != nil {
+				closedClients = append(closedClients, i)
+			}
+		}
+
+		// remove closed clients
+		for _, i := range closedClients {
+			wsClients[msgWs["channel"]][i] = wsClients[msgWs["channel"]][len(wsClients[msgWs["channel"]])-1]
+			wsClients[msgWs["channel"]] = wsClients[msgWs["channel"]][:len(wsClients[msgWs["channel"]])-1]
+		}
+	}
+}
+
+func eventsub(wsClients map[string][]*websocket.Conn) {
+	chEs := channel.NewChannel(channel.ChannelEventsub)
+
+	for {
+		msgEs := <-chEs.Listen()
+
+		msgBytes, err := json.Marshal(msgEs)
+		if err != nil {
+			return
+		}
+
+		msgOutput := WsMessage{
+			Type: "eventsub",
+			Data: string(msgBytes),
+		}
+
+		msgOutputBytes, err := json.Marshal(msgOutput)
+		if err != nil {
+			return
+		}
+
+		var closedClients []int
+		for i, conn := range wsClients[msgEs["channel"]] {
+			err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
+			if err != nil {
+				closedClients = append(closedClients, i)
+			}
+		}
+
+		// remove closed clients
+		for _, i := range closedClients {
+			wsClients[msgEs["channel"]][i] = wsClients[msgEs["channel"]][len(wsClients[msgEs["channel"]])-1]
+			wsClients[msgEs["channel"]] = wsClients[msgEs["channel"]][:len(wsClients[msgEs["channel"]])-1]
+		}
 	}
 }

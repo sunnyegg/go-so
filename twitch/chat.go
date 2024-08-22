@@ -2,7 +2,6 @@ package twitch
 
 import (
 	"fmt"
-	"time"
 
 	twitchClient "github.com/gempir/go-twitch-irc/v4"
 	"github.com/sunnyegg/go-so/channel"
@@ -15,7 +14,6 @@ type ChatClient struct {
 }
 
 var connectedClients = make(map[string]*twitchClient.Client)
-var alreadyPresent = make(map[string]map[string]bool)
 
 func NewChatClient(username, token string) *ChatClient {
 	if _, ok := connectedClients[username]; !ok {
@@ -46,10 +44,6 @@ func (client *ChatClient) Connect(config ConnectConfig) {
 		}
 	}()
 
-	if _, ok := alreadyPresent[config.StreamID]; !ok {
-		alreadyPresent[config.StreamID] = make(map[string]bool)
-	}
-
 	client.ircClient.OnPrivateMessage(func(message twitchClient.PrivateMessage) {
 		fmt.Printf("[%s] %s: %s\n", message.Channel, message.User.DisplayName, message.Message)
 
@@ -59,29 +53,12 @@ func (client *ChatClient) Connect(config ConnectConfig) {
 			fmt.Printf("[%s] Token is updated\n", client.username)
 		}
 
-		if _, ok := alreadyPresent[config.StreamID][message.User.Name]; ok {
-			return
-		}
-
-		alreadyPresent[config.StreamID][message.User.Name] = true
-
 		go func() {
 			chWs.Send(map[string]string{
-				"stream_id": config.StreamID,
-				"username":  message.User.Name,
-				"channel":   message.Channel,
-				"token":     token,
+				"username": message.User.Name,
+				"channel":  message.Channel,
 			})
 		}()
-
-		if config.IsAutoSO {
-			go func() {
-				time.Sleep(time.Second * time.Duration(config.Delay))
-
-				// !so message to twitch chat
-				client.ircClient.Say(message.Channel, "!so @"+message.User.Name)
-			}()
-		}
 	})
 
 	go func() {
@@ -92,13 +69,7 @@ func (client *ChatClient) Connect(config ConnectConfig) {
 	}()
 }
 
-func (client *ChatClient) Disconnect(streamId, username string) {
-	err := client.ircClient.Disconnect()
-	if err != nil {
-		fmt.Printf("[%s] Error when disconnecting from twitch irc: %s\n", username, err)
-	}
-
-	delete(alreadyPresent, streamId)
+func Disconnect(username string) {
 	delete(connectedClients, username)
 }
 
