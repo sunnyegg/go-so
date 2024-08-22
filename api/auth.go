@@ -279,14 +279,14 @@ func (server *Server) createState(ctx *gin.Context) {
 }
 
 func (server *Server) logoutUser(ctx *gin.Context) {
-	payload, _, err := decryptHeader(ctx, server)
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+	var req logoutUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
 	// check session
-	session, err := server.store.GetSessionByRefreshToken(ctx, payload.RefreshToken)
+	session, err := server.store.GetSessionByRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("invalid session")))

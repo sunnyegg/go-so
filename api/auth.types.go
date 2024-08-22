@@ -37,3 +37,7 @@ type refreshUserRequest struct {
 type createStateResponse struct {
 	URL string `json:"url"`
 }
+
+type logoutUserRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
