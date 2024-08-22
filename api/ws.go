@@ -33,7 +33,7 @@ type WsURI struct {
 	ID string `uri:"id" binding:"required"`
 }
 
-var connectedClients = make(map[string][]*websocket.Conn)
+var connectedWsClients = make(map[string][]*websocket.Conn)
 
 func (server *Server) ws(ctx *gin.Context) {
 	var uri WsURI
@@ -57,7 +57,7 @@ func (server *Server) ws(ctx *gin.Context) {
 		return
 	}
 
-	connectedClients[uri.ID] = append(connectedClients[uri.ID], ws)
+	connectedWsClients[uri.ID] = append(connectedWsClients[uri.ID], ws)
 
 	// connect to channel
 	chWs := channel.NewChannel(channel.ChannelWebsocket)
@@ -67,7 +67,7 @@ func (server *Server) ws(ctx *gin.Context) {
 		for {
 			msgWs := <-chWs.Listen()
 
-			if _, ok := connectedClients[msgWs["channel"]]; !ok {
+			if _, ok := connectedWsClients[msgWs["channel"]]; !ok {
 				return
 			}
 
@@ -135,7 +135,7 @@ func (server *Server) ws(ctx *gin.Context) {
 			}
 
 			var closedClients []int
-			for i, conn := range connectedClients[msgWs["channel"]] {
+			for i, conn := range connectedWsClients[msgWs["channel"]] {
 				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
 				if err != nil {
 					closedClients = append(closedClients, i)
@@ -144,8 +144,8 @@ func (server *Server) ws(ctx *gin.Context) {
 
 			// remove closed clients
 			for _, i := range closedClients {
-				connectedClients[msgWs["channel"]][i] = connectedClients[msgWs["channel"]][len(connectedClients[msgWs["channel"]])-1]
-				connectedClients[msgWs["channel"]] = connectedClients[msgWs["channel"]][:len(connectedClients[msgWs["channel"]])-1]
+				connectedWsClients[msgWs["channel"]][i] = connectedWsClients[msgWs["channel"]][len(connectedWsClients[msgWs["channel"]])-1]
+				connectedWsClients[msgWs["channel"]] = connectedWsClients[msgWs["channel"]][:len(connectedWsClients[msgWs["channel"]])-1]
 			}
 		}
 	}()
@@ -170,7 +170,7 @@ func (server *Server) ws(ctx *gin.Context) {
 			}
 
 			var closedClients []int
-			for i, conn := range connectedClients[msgEs["channel"]] {
+			for i, conn := range connectedWsClients[msgEs["channel"]] {
 				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
 				if err != nil {
 					closedClients = append(closedClients, i)
@@ -179,8 +179,8 @@ func (server *Server) ws(ctx *gin.Context) {
 
 			// remove closed clients
 			for _, i := range closedClients {
-				connectedClients[msgEs["channel"]][i] = connectedClients[msgEs["channel"]][len(connectedClients[msgEs["channel"]])-1]
-				connectedClients[msgEs["channel"]] = connectedClients[msgEs["channel"]][:len(connectedClients[msgEs["channel"]])-1]
+				connectedWsClients[msgEs["channel"]][i] = connectedWsClients[msgEs["channel"]][len(connectedWsClients[msgEs["channel"]])-1]
+				connectedWsClients[msgEs["channel"]] = connectedWsClients[msgEs["channel"]][:len(connectedWsClients[msgEs["channel"]])-1]
 			}
 		}
 	}()
