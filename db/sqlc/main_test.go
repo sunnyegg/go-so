@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sunnyegg/go-so/util"
 )
 
@@ -19,11 +19,11 @@ func TestMain(m *testing.M) {
 	}
 
 	dbSource := config.DBSource
-	conn, err := pgx.Connect(context.Background(), dbSource)
+	conn, err := pgxpool.New(context.Background(), dbSource)
 	if err != nil {
 		log.Fatal("cannot connect db: ", err)
 	}
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
 	testStore = NewStore(conn)
 

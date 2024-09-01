@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sunnyegg/go-so/api"
 	"github.com/sunnyegg/go-so/channel"
 	db "github.com/sunnyegg/go-so/db/sqlc"
@@ -20,11 +20,12 @@ func main() {
 	serverAddress := config.ServerAddress
 	dbSource := config.DBSource
 
-	conn, err := pgx.Connect(context.Background(), dbSource)
+	// create connection pool
+	conn, err := pgxpool.New(context.Background(), dbSource)
 	if err != nil {
 		log.Fatal("cannot connect db: ", err)
 	}
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
 	queries := db.NewStore(conn)
 	server, err := api.NewServer(config, queries)

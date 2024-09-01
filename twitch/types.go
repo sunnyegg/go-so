@@ -63,8 +63,14 @@ type ChannelInfo struct {
 }
 
 type ChannelInfoData struct {
-	GameName string `json:"game_name"`
-	Title    string `json:"title"`
+	GameName  string `json:"game_name"`
+	Title     string `json:"title"`
+	Followers int    `json:"followers"`
+	User      struct {
+		Login           string `json:"login"`
+		DisplayName     string `json:"display_name"`
+		ProfileImageURL string `json:"profile_image_url"`
+	} `json:"user"`
 }
 
 type ChannelFollowers struct {

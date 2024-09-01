@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -108,8 +107,6 @@ func (server *Server) connectChat(ctx *gin.Context) {
 
 func (server *Server) handleEventsub(ctx *gin.Context) {
 	var req eventsubRequest
-	var err error
-	ch := channel.NewChannel(channel.ChannelEventsub)
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -128,13 +125,7 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 		return
 	}
 
-	// get user by userid
-	user, err := server.store.GetUserByUserID(ctx, req.Event.BroadcasterUserID)
-	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusOK, nil)
-		return
-	}
+	ch := channel.NewChannel(channel.ChannelEventsub)
 
 	// if someone goes live
 	if req.Subscription.Type == EventsubSubscriptionTypeStreamOnline {
@@ -161,23 +152,11 @@ func (server *Server) handleEventsub(ctx *gin.Context) {
 
 	// if someone redeems reward
 	if req.Subscription.Type == EventsubSubscriptionTypeChannelRedemption {
-		streams, err := server.store.ListStreams(ctx, db.ListStreamsParams{
-			UserID: user.ID,
-			Limit:  1,
-			Offset: 0,
+		go ch.Send(map[string]string{
+			"type":     EventsubSubscriptionTypeChannelRedemption,
+			"channel":  req.Event.BroadcasterUserLogin,
+			"redeemer": req.Event.UserLogin,
 		})
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-			return
-		}
-
-		ch := channel.NewChannel(channel.ChannelWebsocket)
-		go func() {
-			ch.Send(map[string]string{
-				"stream_id": util.ParseIntToString(int(streams[0].ID)),
-				"username":  req.Event.UserLogin,
-			})
-		}()
 
 		ctx.JSON(http.StatusOK, nil)
 		return
@@ -214,6 +193,17 @@ func (server *Server) getChannelInfo(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
+
+	channelFollowers, err := twClient.GetChannelFollowers(payload.AccessToken, userInfo.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	channelInfo.Followers = channelFollowers.Total
+	channelInfo.User.Login = userInfo.Login
+	channelInfo.User.DisplayName = userInfo.DisplayName
+	channelInfo.User.ProfileImageURL = userInfo.ProfileImageURL
 
 	ctx.JSON(http.StatusOK, channelInfo)
 }
