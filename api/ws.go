@@ -28,6 +28,8 @@ type WsURI struct {
 }
 
 var connectedWsClients = make(map[string][]*websocket.Conn)
+var chWs = channel.NewChannel(channel.ChannelWebsocket)
+var chEs = channel.NewChannel(channel.ChannelEventsub)
 
 func (server *Server) ws(ctx *gin.Context) {
 	var uri WsURI
@@ -52,24 +54,26 @@ func (server *Server) ws(ctx *gin.Context) {
 	}
 
 	connectedWsClients[uri.ID] = append(connectedWsClients[uri.ID], ws)
+}
 
+func (server *Server) listenChannels() {
 	go chatter(connectedWsClients)
 	go eventsub(connectedWsClients)
 }
 
 func chatter(wsClients map[string][]*websocket.Conn) {
-	chWs := channel.NewChannel(channel.ChannelWebsocket)
-
 	for {
 		msgWs := <-chWs.Listen()
+		channel := msgWs["channel"]
+		userlogin := msgWs["username"]
 
-		if _, ok := wsClients[msgWs["channel"]]; !ok {
+		if _, ok := wsClients[channel]; !ok {
 			return
 		}
 
 		messageData := WsMessageData{
-			Channel:   msgWs["channel"],
-			UserLogin: msgWs["username"],
+			Channel:   channel,
+			UserLogin: userlogin,
 		}
 
 		// map[string]string to []byte
@@ -88,27 +92,25 @@ func chatter(wsClients map[string][]*websocket.Conn) {
 			return
 		}
 
-		var closedClients []int
-		for i, conn := range wsClients[msgWs["channel"]] {
-			err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
-			if err != nil {
-				closedClients = append(closedClients, i)
+		for i, conn := range wsClients[channel] {
+			if conn != nil {
+				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
+				if err != nil {
+					wsClients[channel][i] = nil
+				}
 			}
-		}
-
-		// remove closed clients
-		for _, i := range closedClients {
-			wsClients[msgWs["channel"]][i] = wsClients[msgWs["channel"]][len(wsClients[msgWs["channel"]])-1]
-			wsClients[msgWs["channel"]] = wsClients[msgWs["channel"]][:len(wsClients[msgWs["channel"]])-1]
 		}
 	}
 }
 
 func eventsub(wsClients map[string][]*websocket.Conn) {
-	chEs := channel.NewChannel(channel.ChannelEventsub)
-
 	for {
 		msgEs := <-chEs.Listen()
+		channel := msgEs["channel"]
+
+		if _, ok := wsClients[channel]; !ok {
+			return
+		}
 
 		msgBytes, err := json.Marshal(msgEs)
 		if err != nil {
@@ -125,18 +127,13 @@ func eventsub(wsClients map[string][]*websocket.Conn) {
 			return
 		}
 
-		var closedClients []int
-		for i, conn := range wsClients[msgEs["channel"]] {
-			err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
-			if err != nil {
-				closedClients = append(closedClients, i)
+		for i, conn := range wsClients[channel] {
+			if conn != nil {
+				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
+				if err != nil {
+					wsClients[channel][i] = nil
+				}
 			}
-		}
-
-		// remove closed clients
-		for _, i := range closedClients {
-			wsClients[msgEs["channel"]][i] = wsClients[msgEs["channel"]][len(wsClients[msgEs["channel"]])-1]
-			wsClients[msgEs["channel"]] = wsClients[msgEs["channel"]][:len(wsClients[msgEs["channel"]])-1]
 		}
 	}
 }

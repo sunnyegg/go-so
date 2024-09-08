@@ -74,6 +74,7 @@ func (server *Server) registerRoutes() {
 
 	// ws
 	router.GET("/ws/:id", server.ws)
+	server.listenChannels()
 
 	server.router = router
 }
