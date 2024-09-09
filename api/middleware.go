@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/didip/tollbooth/v7"
+	"github.com/didip/tollbooth/v7/limiter"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	db "github.com/sunnyegg/go-so/db/sqlc"
@@ -86,5 +88,24 @@ func corsMiddleware() gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+func rateLimitMiddleware(lmt *limiter.Limiter, users *map[string]bool) gin.HandlerFunc {
+	if users != nil {
+		authUsers := make([]string, 0)
+		for user := range *users {
+			authUsers = append(authUsers, user)
+		}
+		lmt.SetBasicAuthUsers(authUsers)
+	}
+	return func(c *gin.Context) {
+		httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request)
+		if httpError != nil {
+			c.Data(httpError.StatusCode, lmt.GetMessageContentType(), []byte(httpError.Message))
+			c.Abort()
+		} else {
+			c.Next()
+		}
 	}
 }

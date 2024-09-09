@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 
+	"github.com/didip/tollbooth/v7"
 	"github.com/gin-gonic/gin"
 	db "github.com/sunnyegg/go-so/db/sqlc"
 	"github.com/sunnyegg/go-so/token"
@@ -34,8 +35,10 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 
 func (server *Server) registerRoutes() {
 	router := gin.Default()
+	limiter := tollbooth.NewLimiter(2, nil)
 
 	router.Use(corsMiddleware())
+	router.Use(rateLimitMiddleware(limiter, nil))
 
 	// auth
 	router.GET("/auth/login", server.loginUser)
@@ -43,7 +46,8 @@ func (server *Server) registerRoutes() {
 	router.GET("/auth/state", server.createState)
 	router.POST("/auth/logout", server.logoutUser)
 
-	authRoutes := router.Group("/").Use(authMiddleware(server))
+	limiter = tollbooth.NewLimiter(1, nil)
+	authRoutes := router.Group("/").Use(authMiddleware(server)).Use(rateLimitMiddleware(limiter, &loggedInUsers))
 
 	// users
 	authRoutes.GET("/users", server.getUser)

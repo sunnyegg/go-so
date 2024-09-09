@@ -16,6 +16,7 @@ import (
 )
 
 var tempState = make(map[string]bool, 0)
+var loggedInUsers = make(map[string]bool, 0)
 
 func (server *Server) loginUser(ctx *gin.Context) {
 	var req loginUserRequest
@@ -102,6 +103,8 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
+
+	loggedInUsers[userInfo.ID] = true
 
 	ctx.JSON(http.StatusOK, rsp)
 }
