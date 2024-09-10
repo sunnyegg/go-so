@@ -27,7 +27,7 @@ type WsURI struct {
 	ID string `uri:"id" binding:"required"`
 }
 
-var connectedWsClients = make(map[string][]*websocket.Conn)
+var connectedWsClients = make(map[string]map[string]*websocket.Conn)
 var chWs = channel.NewChannel(channel.ChannelWebsocket)
 var chEs = channel.NewChannel(channel.ChannelEventsub)
 
@@ -53,7 +53,7 @@ func (server *Server) ws(ctx *gin.Context) {
 		return
 	}
 
-	connectedWsClients[uri.ID] = append(connectedWsClients[uri.ID], ws)
+	connectedWsClients[uri.ID][ws.RemoteAddr().String()] = ws
 }
 
 func (server *Server) listenChannels() {
@@ -61,7 +61,7 @@ func (server *Server) listenChannels() {
 	go eventsub(connectedWsClients)
 }
 
-func chatter(wsClients map[string][]*websocket.Conn) {
+func chatter(wsClients map[string]map[string]*websocket.Conn) {
 	for {
 		msgWs := <-chWs.Listen()
 		channel := msgWs["channel"]
@@ -92,18 +92,17 @@ func chatter(wsClients map[string][]*websocket.Conn) {
 			return
 		}
 
-		for i, conn := range wsClients[channel] {
-			if conn != nil {
-				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
-				if err != nil {
-					wsClients[channel][i] = nil
-				}
+		for _, conn := range wsClients[channel] {
+			err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
+			if err != nil {
+				conn.Close()
+				deleteClient(wsClients, channel, conn.RemoteAddr().String())
 			}
 		}
 	}
 }
 
-func eventsub(wsClients map[string][]*websocket.Conn) {
+func eventsub(wsClients map[string]map[string]*websocket.Conn) {
 	for {
 		msgEs := <-chEs.Listen()
 		channel := msgEs["channel"]
@@ -127,13 +126,16 @@ func eventsub(wsClients map[string][]*websocket.Conn) {
 			return
 		}
 
-		for i, conn := range wsClients[channel] {
-			if conn != nil {
-				err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
-				if err != nil {
-					wsClients[channel][i] = nil
-				}
+		for _, conn := range wsClients[channel] {
+			err = conn.WriteMessage(websocket.TextMessage, msgOutputBytes)
+			if err != nil {
+				conn.Close()
+				deleteClient(wsClients, channel, conn.RemoteAddr().String())
 			}
 		}
 	}
+}
+
+func deleteClient(wsClients map[string]map[string]*websocket.Conn, channel string, addr string) {
+	delete(wsClients[channel], addr)
 }
